@@ -17,8 +17,8 @@ Given a snippet of legacy ABAP code, the skill:
 > Requires [Claude Code](https://docs.claude.com/en/docs/claude-code) installed locally.
 
 ```bash
-# 1. Clone
-git clone <repo-url> sap-table-field-remediator
+# 1. Clone (private repo — requires GitHub access; ask Deep for collaborator invite)
+git clone https://github.com/pambhar-deepkumar/sap-table-field-remediator.git
 cd sap-table-field-remediator
 
 # 2. Install the skill (TODO — fill in once SKILL.md is implemented;
