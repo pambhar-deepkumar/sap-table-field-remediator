@@ -1,44 +1,39 @@
-# CLAUDE.md — AI assistance rules for this repo
+# CLAUDE.md — Anthropic skill spec, distilled
 
-Read this before writing or generating code here.
+This file loads into Claude's context on every turn in this repo. It captures the parts of Anthropic's *Complete Guide to Building Skills for Claude* you need to follow when editing `skills/sap-table-field-remediator/`. Read it once to learn the spec, then use it as a reference.
 
-## What this skill is
+## How skills load — the 3-level model
 
-A Claude Code skill that detects SAP ABAP code referencing tables/fields broken under S/4HANA Brownfield conversion, and recommends remediation. Input: ABAP text. Output: structured markdown report.
+This is the one mental model that makes the rest of the rules click. Claude reads a skill in three progressive levels:
 
-Audience: SAP migration engineers (Deloitte) and graders (TUM). Not end-users.
+1. **YAML frontmatter** — always loaded into the system prompt. Used by Claude to decide whether to load the rest. Must be tight.
+2. **`SKILL.md` body** — loaded only when Claude judges the skill relevant to the user's task. Under 5,000 words.
+3. **Linked files** in `scripts/`, `references/`, `assets/` — loaded only when Claude follows a link.
 
-## What we are NOT building
+Push detail to level 3. The body orients; it doesn't exhaust.
 
-- We do NOT rewrite ABAP code. We *recommend*.
-- We do NOT need a database, auth, or microservices.
-- We do NOT need a CLI framework — a 30-line script is enough if needed.
-- We do NOT need multi-environment CI/CD.
+## Skill folder (hard requirements)
 
-If you're about to add any of the above, stop and raise it in the PR description first.
+- Lives at `skills/sap-table-field-remediator/`.
+- Folder name is kebab-case and must match the `name:` field in `SKILL.md`. No spaces, underscores, or capitals.
+- Allowed inside: **only** `SKILL.md` (required) plus optional `scripts/`, `references/`, `assets/`. **No `README.md`, no `CLAUDE.md`, no dotfiles** — they break the upload flow and clutter the distributable unit.
 
-## AI usage rules (anti-rubber-stamp)
+## YAML frontmatter (hard requirements)
 
-- **Every AI-generated PR must list what the human verified.** No exceptions.
-- **Never edit a test case's expected output to make a failing test pass.** Fix the skill instead.
-- **Don't fabricate SAP details.** Every claim about an obsolete table/field/CDS view must cite the SAP Simplification Item Catalog or a public source, or be explicitly marked TBD.
-- **Plan before implementing.** For any change >50 LOC, write a 3-line plan in the PR description before opening it for review.
-- **One peer review required.** PRs cannot self-merge.
+- Wrap with `---` delimiters above and below.
+- `name`: kebab-case. Cannot start with `claude` or `anthropic` (reserved).
+- `description`: structure as **`[what it does] + [when to use it] + [trigger phrases a user would actually type]`**, under 1024 characters. This is the only thing Claude uses to decide whether to load your skill — get it right.
+- **No XML angle brackets (`< >`) anywhere in frontmatter** — security restriction.
 
-## Code & file conventions
+## Body content
 
-- Skill format follows Anthropic's official spec: `SKILL.md` with YAML frontmatter (`name`, `description`) + markdown body. Reference: github.com/anthropics/skills.
-- Examples in `examples/<NN-short-name>/` with an `input.abap`, `expected.md`, and a brief `README.md`.
-- Tests in `tests/` use `pytest`. Each test case has a clear expected output to score against.
-- Python style: standard `ruff` defaults if/when Python enters.
+- Be specific and actionable. ❌ "Validate the data." ✅ "Run `python scripts/validate.py --input {filename}`; if it fails, common causes are missing fields or invalid date formats."
+- Use markdown headers, not prose paragraphs. Claude parses structure faster than prose.
+- Include error handling for likely failures.
+- When a section grows past a few hundred words, move detail into `references/` and link to it from the body. That's the 3-level model at work.
 
-## Test discipline
+## Going deeper
 
-- Every PR that changes skill behavior must add or update a test case.
-- Test case expected outputs are the source of truth, not the skill output.
-
-## Out of scope (do not propose)
-
-- ABAP code rewriting / auto-fixing.
-- Live SAP system integration — skill operates on text only.
-- Authentication, user accounts, persistence.
+- Anthropic skills docs: https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview
+- Reference skills (read these — best teacher): https://github.com/anthropics/skills
+- The `skill-creator` skill (in Claude Code) — interactively builds and reviews skills with you.
