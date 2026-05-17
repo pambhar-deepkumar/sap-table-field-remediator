@@ -22,17 +22,13 @@ git clone https://github.com/pambhar-deepkumar/sap-table-field-remediator.git
 cd sap-table-field-remediator
 
 # 2. Install the skill (TODO — fill in once SKILL.md is implemented;
-#    likely a symlink or copy into ~/.claude/skills/)
+#    likely a symlink or copy of skills/sap-table-field-remediator/
+#    into ~/.claude/skills/)
 
 # 3. Try an example (TODO — fill in once skill exists)
 ```
 
-Paste-and-go examples will live in `examples/`.
-
-## For Deloitte engineers giving feedback
-
-- Read `docs/feedback-asks.md` first — it narrows what we'd love your eyes on this round.
-- Open a GitHub issue or comment on the PR Deep links you to.
+The skill lives at `skills/sap-table-field-remediator/` (the distributable unit). Paste-and-go examples will live in `examples/` once we have any.
 
 ## Project context
 
