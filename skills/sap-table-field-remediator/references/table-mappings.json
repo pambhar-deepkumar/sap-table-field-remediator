@@ -5,10 +5,10 @@
     "status": "COMPATIBILITY VIEW",
     "s4_replacement": "ACDOCA (Universal Journal) Use CDS view I_JournalEntry for read access",
     "functional_area": "Finance (FI)",
-    "cds_view": "I_JournalEntry",
+    "cds_view": "I_JournalEntryItem",
     "world": "A",
     "release_dependent": false,
-    "fix_pattern": "Read via ACDOCA / I_JournalEntry; RBUKRS, RACCT, add RLDNR='0L'.",
+    "fix_pattern": "Read via ACDOCA / I_JournalEntryItem; RBUKRS, RACCT, BUZEI->DOCLN, add RLDNR='0L'.",
     "source": "deloitte-attachment-1"
   },
   {
@@ -137,10 +137,10 @@
     "status": "ABOLISHED",
     "s4_replacement": "ACDOCA (Universal Journal) Direct cluster access not possible",
     "functional_area": "Finance (FI)",
-    "cds_view": "I_JournalEntry",
+    "cds_view": "I_JournalEntryItem",
     "world": "A",
     "release_dependent": false,
-    "fix_pattern": "Physical FI cluster; data now in ACDOCA Universal Journal.",
+    "fix_pattern": "Physical FI cluster container for BSEG; data now in ACDOCA Universal Journal.",
     "source": "deloitte-attachment-1"
   },
   {

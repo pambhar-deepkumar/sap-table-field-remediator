@@ -163,10 +163,10 @@ SUPPLEMENT_FIELDS = [
 # Per-table enrichment. cds_view marked (research) where confirmed by the
 # research pass; null = no clean released CDS read API -> manual review.
 ENRICH_TABLE = {
-    "BSEG":  {"cds_view": "I_JournalEntry", "release_dependent": False,
-              "fix_pattern": "Read via ACDOCA / I_JournalEntry; RBUKRS, RACCT, add RLDNR='0L'."},
-    "RFBLG": {"cds_view": "I_JournalEntry", "release_dependent": False,
-              "fix_pattern": "Physical FI cluster; data now in ACDOCA Universal Journal."},
+    "BSEG":  {"cds_view": "I_JournalEntryItem", "release_dependent": False,
+              "fix_pattern": "Read via ACDOCA / I_JournalEntryItem; RBUKRS, RACCT, BUZEI->DOCLN, add RLDNR='0L'."},
+    "RFBLG": {"cds_view": "I_JournalEntryItem", "release_dependent": False,
+              "fix_pattern": "Physical FI cluster container for BSEG; data now in ACDOCA Universal Journal."},
     "KONV":  {"cds_view": None, "release_dependent": False,
               "fix_pattern": "Replace table KONV -> PRCD_ELEMENTS (transparent, same fields)."},
     "CDPOS": {"cds_view": None, "release_dependent": True,
