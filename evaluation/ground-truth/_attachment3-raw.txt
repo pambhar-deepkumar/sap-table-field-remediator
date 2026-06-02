@@ -1,0 +1,215 @@
+ATTACHMENT 3
+Sample ECC ABAP Code Snippets
+Skill 3 — Table & Field Access Rewriter
+ABAP Code Remediation — Claude Skills Initiative
+
+How to Use These Snippets
+1.  Paste each ECC snippet into Claude with all 4 Skills loaded.
+2.  Claude will detect the impacted table and rewrite the code.
+3.  Compare Claude's output against the 'What to fix' note for each snippet.
+4.  Log whether Claude's output was correct, partially correct, or wrong.
+5.  Where Claude gets it wrong — refine the Skill rules and retest.
+
+
+Snippet 1  FI Line Items — Direct BSEG Read    [ COMPATIBILITY VIEW ]
+Custom report reading FI line items directly from BSEG. In S/4HANA, BSEG is a compatibility view over ACDOCA. Direct access works but key fields are renamed.
+
+ECC CODEDATA: lt_bseg TYPE TABLE OF bseg,
+      ls_bseg TYPE bseg.
+ 
+SELECT * FROM bseg
+  INTO TABLE lt_bseg
+  WHERE bukrs = '1000'
+    AND gjahr = '2023'
+    AND belnr = '0100000123'.
+ 
+LOOP AT lt_bseg INTO ls_bseg.
+  WRITE: / ls_bseg-hkont, ls_bseg-dmbtr, ls_bseg-buzei.
+ENDLOOP.
+
+What to fix:  Replace BSEG with ACDOCA. Map HKONT → RACCT, BUZEI → DOCLN, BUKRS → RBUKRS. Filter with RLDNR = '0L' for leading ledger.
+
+Snippet 2  Pricing Conditions — Direct KONV Read    [ ABOLISHED ]
+
+Custom program reading pricing conditions from KONV (a cluster table). KONV is abolished in S/4HANA. The replacement is PRCD_ELEMENTS (available from S/4HANA 1909 onwards).
+
+ECC CODEDATA: lt_konv TYPE TABLE OF konv,
+      ls_konv TYPE konv.
+ 
+SELECT * FROM konv
+  INTO TABLE lt_konv
+  WHERE knumv = lv_knumv
+    AND kposn = '000010'.
+ 
+LOOP AT lt_konv INTO ls_konv.
+  WRITE: / ls_konv-kschl, ls_konv-kbetr, ls_konv-waers.
+ENDLOOP.
+
+What to fix:  Replace KONV with PRCD_ELEMENTS. Verify S/4HANA release is 1909 or later. Field names are the same in PRCD_ELEMENTS.
+
+
+Snippet 3  Change Documents — Direct CDPOS Read    [ ABOLISHED ]
+
+Program reading change document items from CDPOS (a cluster table). CDPOS cluster is abolished. Data is now in transparent tables CDPOS_STR and CDPOS_UID.
+
+ECC CODEDATA: lt_cdpos TYPE TABLE OF cdpos,
+      ls_cdpos TYPE cdpos.
+ 
+SELECT * FROM cdpos
+  INTO TABLE lt_cdpos
+  WHERE objectid = lv_objectid
+    AND tabname  = 'VBAK'.
+ 
+LOOP AT lt_cdpos INTO ls_cdpos.
+  WRITE: / ls_cdpos-fname, ls_cdpos-value_new, ls_cdpos-value_old.
+ENDLOOP.
+
+What to fix:  Replace CDPOS with CDPOS_STR for string values or CDPOS_UID for ID-based values. Same fields available in transparent table.
+
+
+
+Snippet 4  FI Document Cluster — RFBLG Access    [ ABOLISHED ]
+
+Legacy FI program accessing the RFBLG balance ledger cluster. This cluster is fully abolished. Data is consolidated into ACDOCA.
+
+ECC CODEDATA: lt_rfblg TYPE TABLE OF rfblg.
+ 
+SELECT * FROM rfblg
+  INTO TABLE lt_rfblg
+  WHERE mandt = sy-mandt
+    AND bukrs = '1000'.
+
+What to fix:  Rewrite using ACDOCA with appropriate filters. RFBLG cluster cannot be accessed in S/4HANA. Full logic redesign may be required — flag as BLOCKER.
+
+
+
+Snippet 5  HR Payroll Cluster — PCL2 Read    [ ABOLISHED ]
+
+HR custom report reading payroll results from the PCL2 cluster table. All HR cluster tables (PCL1–PCL4) are abolished in S/4HANA.
+
+ECC CODEDATA: lt_pcl2 TYPE TABLE OF pcl2.
+ 
+SELECT * FROM pcl2
+  INTO TABLE lt_pcl2
+  WHERE relid = 'RU'
+    AND pernr = lv_pernr.
+
+What to fix:  PCL2 cluster abolished. Refer to SAP Note 2409530 for the correct transparent table per cluster ID and infotype. Flag as BLOCKER — HR specialist review required.
+
+
+Snippet 6  Material Document — MSEG with Renamed Fields    [ RESTRUCTURED ]
+
+Goods movement report joining MSEG and MKPF. MSEG still exists but some fields changed. Verify all field names against SE11 on target system.
+
+ECC CODEDATA: lt_mseg TYPE TABLE OF mseg,
+      ls_mseg TYPE mseg.
+ 
+SELECT m~mblnr m~zeile m~matnr m~werks
+       m~menge m~meins m~bwart
+  FROM mseg AS m
+  INNER JOIN mkpf AS k ON k~mblnr = m~mblnr
+                      AND k~mjahr = m~mjahr
+  INTO TABLE lt_mseg
+  WHERE m~werks = '1000'
+    AND m~bwart IN ('101', '261').
+
+What to fix:  MSEG and MKPF still exist but verify field positions via SE11. Test on S/4HANA system and compare field list. Add MANDT explicitly if needed.
+
+
+Snippet 7  Sales Order — VBAK with Old Field Reference    [ RESTRUCTURED ]
+
+Custom sales order report using VBAK. Table still exists in S/4HANA but some fields changed or moved. Verify field names on target system.
+
+ECC CODEDATA: lt_vbak TYPE TABLE OF vbak,
+      ls_vbak TYPE vbak.
+ 
+SELECT vbeln erdat auart kunnr netwr waerk
+  FROM vbak
+  INTO TABLE lt_vbak
+  WHERE erdat >= '20230101'
+    AND auart = 'ZOR'.
+
+What to fix:  VBAK still exists. Run this SELECT on target S/4HANA system in SE16N to verify all field names are valid. Check SD Simplification List items for any changed fields.
+
+
+
+Snippet 8  LIS Statistics — S001 Table Access    [ ABOLISHED ]
+
+Custom report reading LIS statistics from S001. LIS info structure tables (S001–S065) are abolished in S/4HANA. SAP Note 2267463 covers this.
+
+ECC CODEDATA: lt_s001 TYPE TABLE OF s001.
+ 
+SELECT * FROM s001
+  INTO TABLE lt_s001
+  WHERE mandt = sy-mandt
+    AND spmon >= '202301'.
+
+What to fix:  S001 and all LIS tables abolished. Replace with SAP Embedded Analytics or CDS-based reporting. Custom reports hitting these tables need full redesign. Flag as BLOCKER.
+
+
+
+Snippet 9  FI — BSEG with HKONT and BUZEI    [ COMPATIBILITY VIEW ]
+
+GL account balance report using field HKONT (renamed to RACCT in ACDOCA) and BUZEI (renamed to DOCLN). Common source of wrong data if not fixed.
+
+ECC CODEDATA: ls_bseg TYPE bseg.
+ 
+SELECT SINGLE hkont buzei dmbtr shkzg
+  FROM bseg
+  INTO (ls_bseg-hkont, ls_bseg-buzei,
+        ls_bseg-dmbtr, ls_bseg-shkzg)
+  WHERE bukrs = lv_bukrs
+    AND belnr = lv_belnr
+    AND gjahr = lv_gjahr
+    AND buzei = lv_buzei.
+
+What to fix:  Rewrite against ACDOCA. Map: BUKRS→RBUKRS, HKONT→RACCT, BUZEI→DOCLN. Add RLDNR = '0L' for leading ledger. Use SHKZG equivalent HSL sign logic.
+
+
+Snippet 10  Pricing — KONV Condition Type Loop    [ ABOLISHED ]
+
+SD pricing logic looping through all condition types for a document from KONV. Full KONV table access — cluster will dump in S/4HANA.
+
+ECC CODEDATA: lt_konv TYPE TABLE OF konv,
+      ls_konv TYPE konv.
+ 
+SELECT knumv kposn kschl kwert kbetr waers
+  FROM konv
+  INTO TABLE lt_konv
+  WHERE knumv = lv_knumv.
+ 
+LOOP AT lt_konv INTO ls_konv
+  WHERE kschl = 'PR00' OR kschl = 'MWST'.
+  lv_total = lv_total + ls_konv-kwert.
+ENDLOOP.
+
+What to fix:  Replace KONV with PRCD_ELEMENTS. Same field names. Ensure S/4HANA release is 1909+. Loop logic can remain unchanged after table name is corrected.
+
+
+Snippet 11  Change Documents — CDHDR and CDPOS Join    [ ABOLISHED ]
+
+Audit trail program joining CDHDR and CDPOS to track changes to sales orders. CDPOS cluster abolished — CDHDR still exists but join target must change.
+
+ECC CODESELECT h~changenr h~objectid h~udate h~utime
+         p~tabname p~fname p~value_new p~value_old
+  FROM cdhdr AS h
+  INNER JOIN cdpos AS p ON p~changenr = h~changenr
+  INTO TABLE @DATA(lt_changes)
+  WHERE h~objectclas = 'VERKBELEG'
+    AND h~objectid   = lv_vbeln.
+
+What to fix:  Replace CDPOS with CDPOS_STR in the JOIN. CDHDR remains. Test join on target system. CDPOS_STR contains the same fields for string-based change documents.
+
+Snippet 12  FI — Universal Journal via Old BSEG Pattern    [ COMPATIBILITY VIEW ]
+
+Period-end GL balance report summing amounts from BSEG by cost centre and GL account. Should be rewritten to use ACDOCA for accuracy and performance.
+
+ECC CODESELECT hkont kostl SUM( dmbtr ) AS total_amount
+  FROM bseg
+  INTO TABLE @DATA(lt_balances)
+  WHERE bukrs = '1000'
+    AND gjahr = '2023'
+    AND monat IN ('01', '02', '03')
+  GROUP BY hkont kostl.
+
+What to fix:  Rewrite using ACDOCA. Map HKONT→RACCT, KOSTL→KOSTL (same), BUKRS→RBUKRS, MONAT→POPER. Add RLDNR = '0L'. Aggregation logic remains the same.
