@@ -1,0 +1,99 @@
+{
+  "_about": "Branch B (agentic ReAct skill) predictions on the 12 gold ECC snippets. Produced by acting as skills/sap-table-field-remediator/SKILL.md: per-finding ReAct loop (reason -> kb_lookup -> classify World A/B -> propose rewrite -> check_residual self-correct, cap 3 iters). residual_count is from running check_residual.py on the FINAL rewritten code via stdin. Blockers and RESTRUCTURED-only cases produce no table-swap rewrite, so their residual_count reflects the unrewritten obsolete refs (blockers) or 0 (restructured tables, not flagged by the residual sensor). No World-B over-flagging occurred (no BAPI/FM in these 12).",
+  "tc-01": {
+    "flagged_tables": ["BSEG"],
+    "replacement_table": "ACDOCA",
+    "field_maps_named": ["RACCT", "DOCLN", "RBUKRS"],
+    "blocker": false,
+    "world_b_overflagged": false,
+    "residual_count": 0
+  },
+  "tc-02": {
+    "flagged_tables": ["KONV"],
+    "replacement_table": "PRCD_ELEMENTS",
+    "field_maps_named": [],
+    "blocker": false,
+    "world_b_overflagged": false,
+    "residual_count": 0
+  },
+  "tc-03": {
+    "flagged_tables": ["CDPOS"],
+    "replacement_table": "CDPOS_STR",
+    "field_maps_named": [],
+    "blocker": false,
+    "world_b_overflagged": false,
+    "residual_count": 0
+  },
+  "tc-04": {
+    "flagged_tables": ["RFBLG"],
+    "replacement_table": "ACDOCA",
+    "field_maps_named": [],
+    "blocker": true,
+    "world_b_overflagged": false,
+    "residual_count": 2
+  },
+  "tc-05": {
+    "flagged_tables": ["PCL2"],
+    "replacement_table": null,
+    "field_maps_named": [],
+    "blocker": true,
+    "world_b_overflagged": false,
+    "residual_count": 2
+  },
+  "tc-06": {
+    "flagged_tables": ["MSEG", "MKPF"],
+    "replacement_table": "MSEG",
+    "field_maps_named": [],
+    "blocker": false,
+    "world_b_overflagged": false,
+    "residual_count": 0
+  },
+  "tc-07": {
+    "flagged_tables": ["VBAK"],
+    "replacement_table": "VBAK",
+    "field_maps_named": [],
+    "blocker": false,
+    "world_b_overflagged": false,
+    "residual_count": 0
+  },
+  "tc-08": {
+    "flagged_tables": ["S001"],
+    "replacement_table": null,
+    "field_maps_named": [],
+    "blocker": true,
+    "world_b_overflagged": false,
+    "residual_count": 2
+  },
+  "tc-09": {
+    "flagged_tables": ["BSEG"],
+    "replacement_table": "ACDOCA",
+    "field_maps_named": ["RACCT", "DOCLN", "RBUKRS", "HSL"],
+    "blocker": false,
+    "world_b_overflagged": false,
+    "residual_count": 0
+  },
+  "tc-10": {
+    "flagged_tables": ["KONV"],
+    "replacement_table": "PRCD_ELEMENTS",
+    "field_maps_named": [],
+    "blocker": false,
+    "world_b_overflagged": false,
+    "residual_count": 0
+  },
+  "tc-11": {
+    "flagged_tables": ["CDPOS"],
+    "replacement_table": "CDPOS_STR",
+    "field_maps_named": [],
+    "blocker": false,
+    "world_b_overflagged": false,
+    "residual_count": 0
+  },
+  "tc-12": {
+    "flagged_tables": ["BSEG"],
+    "replacement_table": "ACDOCA",
+    "field_maps_named": ["RACCT", "RBUKRS", "POPER", "KOSTL"],
+    "blocker": false,
+    "world_b_overflagged": false,
+    "residual_count": 0
+  }
+}
