@@ -74,7 +74,7 @@ python3 scripts/remediate.py <file.abap> --rewrite-only | python3 scripts/check_
   table has no clean replacement and routes to manual redesign. Do not "fix" this by
   inventing a replacement (that is the AI-slop failure mode the rubric penalizes).
 
-If a sandbox is available, additionally run `validator/lint_snippet.py` (abaplint
+If a sandbox is available, additionally run `python3 scripts/lint_snippet.py -` (abaplint
 syntax parse) and, when an SAP system is reachable, the real ATC / syntax check.
 abaplint degrades gracefully offline (exit 2) — fall back to `check_residual` only.
 
