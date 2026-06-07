@@ -98,7 +98,7 @@ Use the KB row's fields verbatim; do not second-guess them.
 ### VERIFY: the feedback signal
 
 - Pipe the rewrite to `python3 scripts/check_residual.py - < rewrite` (or write a temp file). **Exit 0 / `residual_count: 0` = clean (REQ-012).** Any residual = the rewrite still names an obsolete token; self-correct.
-- If `npx` is available, also run `python3 ../../validator/lint_snippet.py -` (path is relative to the skill folder) for a parse check. If it prints `ABAPLINT UNAVAILABLE`, that is fine — fall back to check_residual only (do not block on it).
+- If `npx` is available, also run `python3 scripts/lint_snippet.py -` for a parse check. If it prints `ABAPLINT UNAVAILABLE`, that is fine — fall back to check_residual only (do not block on it).
 - **Self-correct on residuals:** common causes — left the old table name in a `TYPE TABLE OF`, missed a field rename, left a CHAR18 decl, or forgot `RLDNR='0L'`. Fix the specific residual the script reported (it gives line + token), then re-verify.
 - **Note:** a BLOCKER/route/note item produces no rewrite, so it has nothing to verify — that is expected, not a failure.
 
@@ -121,7 +121,7 @@ Markdown. Lead with the headline, then the table, then per-finding detail.
 
 ## Embedded self-check rubric (run before returning)
 
-Adapted from `validator/llm-judge-rubric.md`. Score your own report 0-2 each; if mean < 1.5, fix and re-run.
+Adapted from the project LLM-judge rubric. Score your own report 0-2 each; if mean < 1.5, fix and re-run.
 
 1. **Mapping correctness** — right replacement table + right field renames (`HKONT->RACCT`, `BUZEI->DOCLN`, `BUKRS->RBUKRS`, `MONAT->POPER`); `RLDNR='0L'` added on ACDOCA reads.
 2. **World-A/B precision (headline)** — must-fix vs key-only correct; did NOT over-flag a working released BAPI or a still-valid table (MARA/MAKT/VBAK/VBAP/LIKP/VBRK). 0 if any World-B BAPI or D-list table is marked must-fix.
