@@ -44,22 +44,67 @@ deterministic (KB lookup / abaplint — never let the LLM *find*, it hallucinate
 the common case; escalate only the uncertain residue to the paid agentic loop.
 
 ## The NEW design (the delta vs the old World-A/B-only skill)
-Two ORTHOGONAL axes per finding:
+THREE axes per finding — they compose; do not conflate them:
 - **world** A | A-verify | B — *must I fix it?* (from the catalog; already exists)
-- **tier** T1 | T2 | T3 — *how much human judgment does the fix need?* (NEW — the scored axis)
+- **category** 1–4 — *what KIND of change is it?* (the classification + the playbook key — see below)
+- **tier** T1 | T2 | T3 — *how much human judgment does the fix need?* (the SCORED axis — emit this)
 
-Tier → action mapping the report uses:
-- **T1 mechanical** → `auto_apply` (deterministic 1:1 fix, no human)
-- **T2 bounded-semantic** → `propose` (agent proposes → verifier → human signs off)
-- **T3 needs-human-intent** → `escalate` (agent asks a targeted `intent_question`, then proceeds)
-- A-verify / B-verify → `verify` (flag "verify on target", don't hard-fix)
-- statement-level smell (SELECT*, DB-in-LOOP, EXEC SQL) → `route_to_sibling` (Skill-4 handoff)
+### Change taxonomy (4 categories) → tier/action (3 tiers)
+Classify each finding into one category; the category maps to the scored tier/action:
 
-**Escalation safety (critical):** a finding's baseline tier comes from the catalog, but the agent may
-**escalate it (never downgrade)** when the specific usage is riskier than the object implies — e.g. a
-MATNR that is *parsed by character offset*, or a *write* to an abolished/condition table. Such cases must
-NOT be `auto_apply`. This "escalate-only" ratchet is what makes zero-human T1 defensible, and the eval
-scores "unsafe auto-applies must = 0".
+| Category | Nature | → Tier | → action | Playbook does |
+|---|---|---|---|---|
+| **1 Syntactic** (rename, field length) | mechanical | T1 | `auto_apply` | apply the deterministic 1:1 fix, no human |
+| **2 Structural** (type, compat view) | adjust access | T2 | `propose` | redirect the read; propose; human signs off |
+| **3 Semantic** (data reshaped) | rebuild intent | T3 | `escalate` | ask the `intent_question` → then propose |
+| **4 Functional** (capability gone) | redesign / triage | T3 | `escalate` | write up the analysis, hand to a consultant, **don't auto-fix** |
+
+Plus two non-category actions: A-verify / B-verify → `verify` (flag "verify on target", don't hard-fix);
+statement-level smell (SELECT*, DB-in-LOOP, EXEC SQL) → `route_to_sibling` (Skill-4 handoff).
+
+Narrative (and a slide): **cat 1–2 are what SAP's own ATC/Simplification DB already cover; our tool
+earns its keep at 3–4 — value peaks at 3 (still codeable after intent), triage at 4.**
+
+**Scoring note:** `tier`/`action` are what the harness scores — emit them. `category` is the skill's
+classification + the playbook selector + an informative report field. We do NOT re-tag the corpus or
+change what the harness scores. (Category-accuracy could become a metric later by tagging findings.yaml.)
+
+**Escalation safety (critical) = bump the category UP the 1→4 spectrum, never down.** A finding's
+baseline category/tier comes from the catalog, but the agent may **escalate** when the specific usage is
+riskier than the object implies — e.g. a MATNR *parsed by character offset* (Syntactic→Semantic) or a
+*write* to an abolished/condition table (→ Functional). Escalated cases must NOT be `auto_apply`. This
+escalate-only ratchet is what makes zero-human T1 defensible; the eval scores "unsafe auto-applies = 0".
+
+## Structure — progressive disclosure (3 levels) + per-category playbooks
+Lay the skill out so the heavy stuff loads only when needed (token + context efficiency):
+- **L1 frontmatter** (always loaded; the trigger): `name` + a tight `description` (what + when + trigger
+  phrases). Nothing else.
+- **L2 `SKILL.md` body** (loads when relevant; the playbook, NOT the data): the procedure — run the
+  deterministic detector → classify each finding into a category → route by the table above → emit the
+  report. Lean (<5k words); point to L3 for depth.
+- **L3 linked files** (load on demand; the depth):
+  - `scripts/` — the deterministic detector (reads the KB, finds + baseline-classifies), report
+    emitter/validator, residual-check. **Executed, not read into context.**
+  - `references/playbooks/{syntactic,structural,semantic,functional}.md` — ONE playbook per category,
+    loaded JIT *after* a finding is classified. Each playbook = the fix approach + when it escalates
+    + a worked before→after example + pointer to the per-object override (field maps, CDS view, SAP note).
+  - `references/*.json` — the KB (read by the detector script, not the LLM) + the report schema.
+  - `assets/` — report skeleton / templates.
+
+**The efficiency principle:** the KB lives in scripts (never in LLM context); a finding's playbook loads
+only after it's classified; only the cat 3–4 residue reaches the LLM. A program with only BSEG issues
+never loads the Syntactic/cluster playbooks.
+
+## Design rationale (v1 — keep it simple; every choice maps to a harness metric)
+- **Deterministic-first.** Detection + cat-1 Syntactic fixes are scripts → 0 LLM tokens, perfect recall
+  on the catalog, reproducible. (Backed: prior eval measured the deterministic path at ~$0.) → feeds
+  Detection F1 + cost-per-correct.
+- **LLM only on the cat 3–4 residue, playbook loaded JIT** → minimal context, fewer turns. → cost-per-correct.
+- **Escalate-only ratchet** → never auto-applies a risky fix. → "unsafe auto-applies = 0".
+- **NO subagents in v1.** The human is the verifier for T2/T3 (fits "human review non-negotiable").
+  Context-isolation + verifier subagents are an explicit LATER enhancement, justified only if a metric
+  needs them — not core. (Rationale for the talk: subagents add tokens; deterministic-first already
+  bounds what reaches the LLM, so v1 doesn't need them.)
 
 ## Output contract (what the skill must emit)
 Emit `remediation-report.json` conforming to `../synthetic-sap-codebase/eval/report-contract.schema.json`
