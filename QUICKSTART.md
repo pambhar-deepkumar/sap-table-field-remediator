@@ -18,7 +18,7 @@ enriches the harder (T3) fixes with page-cited SAP evidence. No uv → it degrad
 ## 2. Install (one command)
 
 ```
-/plugin marketplace add pambhar-deepkumar/sap-remediator
+/plugin marketplace add pambhar-deepkumar/sap-table-field-remediator
 /plugin install sap-table-field-remediator@sap-remediator
 ```
 
