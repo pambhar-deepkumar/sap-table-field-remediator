@@ -1,39 +1,74 @@
 # SAP Table & Field Remediator
 
-A Claude Code skill that flags SAP ABAP code referencing tables/fields that break after an S/4HANA Brownfield conversion, and recommends modern replacements (released CDS views where available).
+A Claude Code **plugin** that scans custom ECC ABAP for table/field accesses that break in an
+**S/4HANA brownfield conversion**, tiers each fix by how much human judgment it needs (T1/T2/T3),
+and emits a machine-readable `remediation-report.json`. Detection is deterministic (abaplint AST +
+catalog); the LLM does judgment only on the hard cases; a human signs off. Ships a **page-cited
+Simplification-List knowledge base** served over MCP.
 
-> **Status:** Scaffolding only. Skill implementation begins Phase 2.
+## Install
 
-## What this skill does
-
-Given a snippet of legacy ABAP code, the skill:
-1. Detects `SELECT` statements on obsolete or restricted tables/fields.
-2. Classifies each finding (obsolete-with-replacement, obsolete-no-replacement, restricted-field).
-3. Recommends a modern replacement or routes to manual review.
-4. Returns a structured markdown remediation report.
-
-## Try it in 5 minutes
-
-> Requires [Claude Code](https://docs.claude.com/en/docs/claude-code) installed locally.
-
-```bash
-# 1. Clone (private repo — requires GitHub access; ask Deep for collaborator invite)
-git clone https://github.com/pambhar-deepkumar/sap-table-field-remediator.git
-cd sap-table-field-remediator
-
-# 2. Install the skill (TODO — fill in once SKILL.md is implemented;
-#    likely a symlink or copy of skills/sap-table-field-remediator/
-#    into ~/.claude/skills/)
-
-# 3. Try an example (TODO — fill in once skill exists)
+```
+claude plugin marketplace add pambhar-deepkumar/sap-table-field-remediator
+claude plugin install sap-table-field-remediator@sap-remediator
 ```
 
-The skill lives at `skills/sap-table-field-remediator/` (the distributable unit). Paste-and-go examples will live in `examples/` once we have any.
+One command set installs the skill **and** the `simplification-kb` MCP server — no path editing,
+no venv. Prerequisites:
+
+| Need | Why | Install |
+|---|---|---|
+| **Claude Code** | runs the plugin | — |
+| **Node.js** ≥ 18 | the abaplint AST detector | https://nodejs.org |
+| **uv** *(optional)* | runs the bundled KB server with no venv/pip | https://docs.astral.sh/uv |
+
+`uv` is optional — the skill detects and tiers findings without the KB; the KB only enriches the
+harder (T3) fixes with page-cited SAP evidence.
+
+## Try it
+
+In Claude Code, with no code of your own:
+
+> *"Run the SAP Table & Field Remediator on the bundled example."*
+
+It scans `examples/zdemo_s4_check.abap` and produces a tiered report. Then point it at your code:
+
+> *"Remediate the ABAP in `./src` for an S/4HANA brownfield conversion."*
+
+Full walkthrough: **[QUICKSTART.md](QUICKSTART.md)**.
+
+## What it does
+
+1. **Detect** every DB-access statement (SELECT/JOIN/FOR ALL ENTRIES, `IMPORT … FROM DATABASE`,
+   `EXEC SQL`) via abaplint's AST — not regex.
+2. **Classify & tier** each finding: T1 mechanical (`auto_apply`), T2 bounded (`propose`), T3
+   intent-needed (`escalate`). A structural guard guarantees **0 unsafe auto-applies, by construction**.
+3. **Derive** the variant-correct fix for T3 cases from the bundled Simplification-List KB
+   (page-cited), reached over MCP — evidence, not an oracle.
+4. **Emit** a schema-valid `remediation-report.json`. A human reviews and signs off.
+
+Blind-evaluated against a synthetic ground-truth corpus: **F1 90.9%, tier accuracy 100%, 0 unsafe
+auto-applies** (deterministic v1, scorer never sees the answer key).
+
+## How it's packaged
+
+One repo = the skill + the KB MCP server + the plugin/marketplace manifest:
+
+```
+.claude-plugin/         marketplace.json + plugin.json
+.mcp.json               launches the KB server via `uv run`
+skills/sap-table-field-remediator/   the skill (SKILL.md + scripts/references)
+mcp/                    the KB server (server.py + 429 page-cited chunks)
+examples/               a demo ABAP program for zero-setup trials
+```
 
 ## Project context
 
-This skill is part of a TUM × Deloitte research project (Summer 2026): *AI-Powered SAP Custom Code Analyzer — Leveraging Anthropic Claude for Automated S/4HANA Conversion Assessment*. We're the Table & Field Remediator sub-team (Skill 3 of 6). Strategic / operational context lives outside this repo intentionally.
+Part of a TUM × Deloitte research project (Summer 2026): *AI-Powered SAP Custom Code Analyzer*.
+Skill 3 of 6 (Table & Field Remediator). Built entirely from **public** SAP material + **synthetic**
+sample data.
 
 ## Contributing
 
-Read `CLAUDE.md` before using AI assistance in this repo. See `CONTRIBUTING.md` for PR flow.
+See `CONTRIBUTING.md` for the PR flow. `CLAUDE.md` documents the skill-authoring spec followed in
+`skills/sap-table-field-remediator/`.
