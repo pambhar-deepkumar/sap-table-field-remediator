@@ -59,9 +59,23 @@ What `analyze.py` does for you (no LLM tokens):
 ### 2. Refine ONLY the escalations (the LLM's job)
 For each item in `escalations`, open the **one** matching playbook
 (`references/playbooks/{syntactic|structural|semantic|functional}.md`) and the source line, then:
+
+**Ground the fix in the Simplification List (if the KB server is connected).** Before you
+write `replacement`/`rationale` for an escalation, call the knowledge-base MCP tool
+`mcp__simplification-kb__lookup` with the finding's `object` (e.g. `lookup(object="BSEG")`). It
+returns the matching Simplification-List item(s) — title, **page citation**, and body — so you
+derive the *variant-correct* fix for this statement from primary SAP guidance instead of guessing.
+Use `mcp__simplification-kb__search` for the multi-hop case (e.g. `search("pricing data model")`
+when the object alone isn't enough). The KB is **evidence, not an oracle**: read it, then decide.
+**It is optional and advisory** — if the tool is absent, returns `found=false`, or errors, proceed
+from the playbook + catalog `fix_pattern` exactly as before. Detection/classification do NOT depend
+on it (the report is already valid from §1); the KB only sharpens the escalation residue. Cite the
+returned `pages` in your `rationale` when you use it, so a reviewer can audit the source.
+
 - **`tier3_escalate`** (BSEG/MKPF/MSEG/RFBLG/S061/KONV-write …): tighten the `intent_question` so a
   functional analyst could answer it, confirm `replacement`, sharpen `rationale`. Use
-  `semantic.md` (RESTRUCTURED) or `functional.md` (ABOLISHED/cluster/write).
+  `semantic.md` (RESTRUCTURED) or `functional.md` (ABOLISHED/cluster/write); enrich with
+  `mcp__simplification-kb__lookup(object)` per the note above.
 - **`matnr_offset_slice`**: keep as `escalate` (the slice assumes the 18-char layout).
 - **`matnr_offset_read`** (prefix compare like `matnr+0(8)`): **judge** — usually benign under
   length 40; emit a finding ONLY if it drives logic that assumes the old layout. Default: suppress.
@@ -96,6 +110,14 @@ findings and pipe through `guard.py`. The headline "unsafe auto-applies = 0" mus
 - Scan `*.abap` ONLY. Ignore paired `*.prog.xml` / `*.clas.xml` (metadata, not code).
 - Two modes: `analysis` (report only — the scored path) and `apply` (also writes T1 patches; then
   `python3 scripts/residual_check.py --src ./src` gates that no must-fix reference survives).
+- **Simplification-List KB (optional enrichment).** To give the escalation step §2 the KB tools,
+  pass the server config and allow its tools:
+  ```
+  claude -p "remediate ./src for S/4HANA" \
+    --mcp-config /path/to/project/.mcp.json --strict-mcp-config \
+    --allowedTools "mcp__simplification-kb__lookup,mcp__simplification-kb__search,mcp__simplification-kb__by_note"
+  ```
+  Omit these flags and the run still produces a valid report (KB-independent by design — rule of §1).
 
 ## Scripts (L3 — executed, not read into context)
 | Script | Role |
