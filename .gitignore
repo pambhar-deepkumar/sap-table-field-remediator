@@ -29,3 +29,10 @@ build/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Node (abaplint detector deps — installed at runtime via scripts/setup.sh)
+node_modules/
+package-lock.json
+
+# Generated reports
+remediation-report.json
