@@ -29,3 +29,14 @@ build/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Node (abaplint detector deps — installed at runtime via scripts/setup.sh)
+node_modules/
+package-lock.json
+
+# Generated reports
+remediation-report.json
+
+# Bundled KB (docling intermediate is rebuildable, never ship)
+mcp/common/full.json
+mcp/common/full.md
