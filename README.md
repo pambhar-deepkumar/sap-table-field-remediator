@@ -47,8 +47,28 @@ Full walkthrough: **[QUICKSTART.md](QUICKSTART.md)**.
    (page-cited), reached over MCP — evidence, not an oracle.
 4. **Emit** a schema-valid `remediation-report.json`. A human reviews and signs off.
 
-Blind-evaluated against a synthetic ground-truth corpus: **F1 90.9%, tier accuracy 100%, 0 unsafe
-auto-applies** (deterministic v1, scorer never sees the answer key).
+## Evaluation
+
+Blind-run against a synthetic ground-truth corpus (18 abapGit objects, 30 labeled findings across
+SD/MM/FI). The skill saw only the code + the public catalog; the scorer ran outside the sandbox
+against a secret answer key it never exposed to the skill. Single run, `claude-opus-4-8`, analysis
+mode, 2026-06-27.
+
+| Metric | Result |
+|---|---|
+| Detection F1 | **90.9%** (precision 93.8% · recall 88.2%) |
+| Tier accuracy | **100%** (15/15) |
+| Unsafe auto-applies | **0** (guaranteed by construction) |
+| Distractor over-claims | **0 / 7** (0 / 5 on clean negatives) |
+| Correct-replacement rate | 80% (12/15) |
+| Cost / run | **$2.75** (~$0.18 per correct finding · ~5 min · 30 turns) |
+
+Full scorecard: [`eval/scorecard-opus48-v1.md`](eval/scorecard-opus48-v1.md).
+
+**Caveats (read before quoting):** tier accuracy is perfect but rests on a thin base for the easy
+tiers (2 T1, 3 T2 cases; T3 is well-covered) — corpus rebalancing is in progress. The two misses
+(F-MM-03, F-SD-05) and one spurious flag are listed in the scorecard. Single run, so cost is a point
+estimate.
 
 ## How it's packaged
 
