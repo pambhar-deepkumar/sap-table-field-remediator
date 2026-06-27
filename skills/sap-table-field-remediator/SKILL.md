@@ -85,6 +85,24 @@ returned `pages` in your `rationale` when you use it, so a reviewer can audit th
 Edit `remediation-report.json` in place. Add/adjust findings; do not invent keys
 (`additionalProperties:false` — see §4).
 
+### 2.1 Work the review queue (catalog-misses — never silently dropped)
+`analyze.py` also writes **`review-queue.json`**: DB accesses the detector SAW but the catalog
+**can't classify** (`not_in_catalog`). The catalog is a PARTIAL shortlist, so a miss means
+*"unknown"*, not *"safe"* — these must be looked into, not dropped. For each item:
+
+- **Search the KB, not lookup.** Call `mcp__simplification-kb__search(object)` (e.g.
+  `search("MARD")`). Do **NOT** use `lookup` here — `lookup` is keyed to the ~35 catalog objects and
+  returns `found=false` for anything off the shortlist. `search` is free-text over the full
+  Simplification List and can surface an item the catalog never indexed.
+- **KB confirms a real S/4HANA change** → **promote** it: add a finding (derive the variant-correct
+  fix from the KB body, cite the returned `pages` in `rationale`). Same shape/rules as a §2 finding.
+- **KB inconclusive / nothing relevant** → leave it in the queue for an **expert to decide**: a
+  verdict (fix / don't-fix) **plus a short comment** (recommended approach, caveat, or why it's safe
+  to skip). Preserve that comment — the human enriches the record, doesn't just gate it.
+- **Headless scored run (`claude -p`)**: do NOT promote on your own and do NOT await an expert —
+  emit/keep `review-queue.json` and STOP (same rule as `escalate` in the headless contract). The
+  scored `remediation-report.json` is unaffected (the queue is a separate sidecar).
+
 ### 3. Re-run the guard (mandatory after any edit)
 Any time you change actions/tiers, re-assert the safety guarantee:
 ```

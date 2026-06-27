@@ -197,6 +197,9 @@ def classify(detect: dict, cat: dict) -> dict:
     findings = []
     escalations = []
     suppressed = []
+    review_queue = []  # accesses the detector SAW but the catalog can't classify
+                       # (not_in_catalog). NOT silently dropped: surfaced for KB-search
+                       # + expert decide-or-skip. See DECISIONS.md [2026-06-27].
 
     for st in detect["statements"]:
         file = st["file"]
@@ -271,7 +274,12 @@ def classify(detect: dict, cat: dict) -> dict:
         # --- catalog lookup ------------------------------------------------ #
         entry = cat.get(obj)
         if entry is None:
-            suppressed.append({"file": file, "line": line, "object": obj, "reason": "not_in_catalog"})
+            # Unknown != safe. The catalog is a PARTIAL shortlist, so a miss means
+            # "we don't know", not "not affected". Route to the review queue (KB-search
+            # + expert decide) instead of dropping it. See DECISIONS.md [2026-06-27].
+            review_queue.append({"file": file, "line": line, "object": obj,
+                                 "object_type": "table",  # unknown object; table-level by default
+                                 "access": access, "reason": "not_in_catalog"})
             continue
         status = entry.get("status")
         world = entry.get("world")
@@ -321,7 +329,8 @@ def classify(detect: dict, cat: dict) -> dict:
                  "note": "Confirm intent_question + replacement; refine rationale."}
             )
 
-    return {"findings": findings, "escalations": escalations, "suppressed": suppressed}
+    return {"findings": findings, "escalations": escalations,
+            "suppressed": suppressed, "review_queue": review_queue}
 
 
 def main() -> int:

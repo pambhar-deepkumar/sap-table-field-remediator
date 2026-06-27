@@ -39,6 +39,8 @@ package-lock.json
 
 # Generated reports
 remediation-report.json
+suppressed-report.json
+review-queue.json
 
 # Bundled KB (docling intermediate is rebuildable, never ship)
 mcp/common/full.json
