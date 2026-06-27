@@ -1,11 +1,9 @@
 # Simplification List — PUBLIC catalog (the remediator skill MAY see this)
 #
 # Phase 1 deliverable. This is the curated, corrected catalog the skill is allowed to read
-# (the production analogue of the SAP Simplification DB + the Deloitte KB). It is anchored to:
-#   - Deloitte KB: sap-table-field-remediator/skills/.../references/{table,field}-mappings.json,
-#     world-b-allowlist.json
-#   - evidence/s4twl-items.md (Phase 0, tier-tagged, with corrections)
-#   - evidence/sources.md (verified SAP Note numbers)
+# (the production analogue of the SAP Simplification DB + the Deloitte KB). It was originally
+# derived from an internal Deloitte KB and SAP S/4HANA "what's new" (S4TWL) notes, now folded
+# directly into this file; those source files are not shipped in the repo.
 #
 # IMPORTANT corrections applied vs the raw KB (do NOT regress these):
 #   - CDPOS/CDHDR: KB said CDPOS -> CDPOS_STR/CDPOS_UID. THOSE TABLES DO NOT EXIST. Reality: the
@@ -27,9 +25,9 @@
 #   release_dependent bool (bites only on certain target releases / settings)
 #   baseline_tier     T1 | T2 | T3 | null   (the catalog's *default* judgment cost; a specific
 #                     usage can escalate above this — see findings.yaml must_escalate)
-#   sap_note          verified S4TWL note (see evidence/sources.md), or null
+#   sap_note          verified S4TWL note, or null
 #   fix_pattern       one-line remediation summary
-#   source            kb:<file> | evidence:s4twl-items.md | corrected:<reason>
+#   source            sap-s4twl | deloitte-kb | corrected:<reason>
 
 catalog:
 
@@ -47,7 +45,7 @@ catalog:
     baseline_tier: T1                      # mechanical IF only read/moved/displayed; T3 if offset-parsed
     sap_note: "2267140"
     fix_pattern: "Ensure no hardcoded CHAR18 target / fixed-length WRITE. Offset/substring access -> escalate (see findings must_escalate)."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: KONV
     type: table
@@ -59,7 +57,7 @@ catalog:
     baseline_tier: T1                      # 1:1 rename for a pure READ SELECT
     sap_note: "2220005"                    # cookbook 2267308
     fix_pattern: "Read: swap KONV -> PRCD_ELEMENTS (identical fields). WRITE (INSERT/UPDATE/DELETE) is FORBIDDEN in S/4 -> escalate to T3 (use pricing API)."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: VBUK
     type: table
@@ -71,7 +69,7 @@ catalog:
     baseline_tier: T2
     sap_note: "2198647"                    # S4TWL 2267306
     fix_pattern: "Drop VBUK join; re-point header status (GBSTK etc.) onto VBAK/LIKP/VBRK by doc category. Silent empty join if left as-is."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: VBUP
     type: table
@@ -83,7 +81,7 @@ catalog:
     baseline_tier: T2
     sap_note: "2198647"
     fix_pattern: "Drop VBUP join; re-point item status (GBSTA etc.) onto VBAP/LIPS by doc category."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: GBSTK
     type: field
@@ -95,7 +93,7 @@ catalog:
     baseline_tier: T2
     sap_note: "2198647"
     fix_pattern: "Overall header status now read from VBAK (or LIKP/VBRK by category), not VBUK."
-    source: kb:field-mappings.json
+    source: deloitte-kb
 
   - object: GBSTA
     type: field
@@ -107,7 +105,7 @@ catalog:
     baseline_tier: T2
     sap_note: "2198647"
     fix_pattern: "Overall item status now read from VBAP (or LIPS by category), not VBUP."
-    source: kb:field-mappings.json
+    source: deloitte-kb
 
   - object: VBTYP
     type: field
@@ -119,7 +117,7 @@ catalog:
     baseline_tier: T2                       # value-domain widening; comparisons/IFs must be revisited
     sap_note: null
     fix_pattern: "SD doc category widened CHAR1 VBTYP -> CHAR4 VBTYPL; fix literal comparisons. Verify on target release."
-    source: kb:field-mappings.json
+    source: deloitte-kb
 
   - object: KNA1
     type: table
@@ -131,7 +129,7 @@ catalog:
     baseline_tier: T2
     sap_note: "2265093"
     fix_pattern: "Read may still work via CVI. Modernize to BUT000/I_Customer; address/role data spread across BUT0xx."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: LFA1
     type: table
@@ -143,7 +141,7 @@ catalog:
     baseline_tier: T2
     sap_note: "2265093"
     fix_pattern: "Read may still work via CVI. Modernize to BUT000/I_Supplier."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: BSEG
     type: table
@@ -155,7 +153,7 @@ catalog:
     baseline_tier: T3                       # granularity/ledger/intent ambiguity
     sap_note: "2270333"
     fix_pattern: "Read line items from ACDOCA; renames BUKRS->RBUKRS, HKONT->RACCT, BUZEI->DOCLN; add RLDNR='0L'. Choice BSEG-vs-ACDOCA needs report intent."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: BUKRS
     type: field
@@ -167,7 +165,7 @@ catalog:
     baseline_tier: T3
     sap_note: "2270333"
     fix_pattern: "BSEG-BUKRS -> ACDOCA-RBUKRS when reading from Universal Journal."
-    source: kb:field-mappings.json
+    source: deloitte-kb
 
   - object: HKONT
     type: field
@@ -179,7 +177,7 @@ catalog:
     baseline_tier: T3
     sap_note: "2270333"
     fix_pattern: "BSEG-HKONT -> ACDOCA-RACCT (G/L account)."
-    source: kb:field-mappings.json
+    source: deloitte-kb
 
   - object: BUZEI
     type: field
@@ -191,7 +189,7 @@ catalog:
     baseline_tier: T3
     sap_note: "2270333"
     fix_pattern: "BSEG-BUZEI (3-char) -> ACDOCA-DOCLN (6-char); watch the length difference."
-    source: kb:field-mappings.json
+    source: deloitte-kb
 
   - object: MKPF
     type: table
@@ -203,7 +201,7 @@ catalog:
     baseline_tier: T3                       # stock-on-the-fly semantics; moved append fields
     sap_note: "2206980"
     fix_pattern: "Header data now in single MATDOC table; read via I_MaterialDocumentHeader. Compat view parses but append/process logic must move."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: MSEG
     type: table
@@ -215,7 +213,7 @@ catalog:
     baseline_tier: T3
     sap_note: "2206980"
     fix_pattern: "Item/goods-movement data now in MATDOC; read via I_MaterialDocumentItem. Stock calculated on the fly."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: RFBLG
     type: table
@@ -227,7 +225,7 @@ catalog:
     baseline_tier: T3                       # direct cluster access impossible -> redesign
     sap_note: "2270333"
     fix_pattern: "Cluster gone; data in ACDOCA. Direct IMPORT/EXPORT against RFBLG impossible -> redesign read."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: S001
     type: table
@@ -239,7 +237,7 @@ catalog:
     baseline_tier: T3
     sap_note: "2267463"
     fix_pattern: "LIS abolished; no mechanical target. Redesign to Embedded Analytics / a released CDS analytic view."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: S061
     type: table
@@ -251,7 +249,7 @@ catalog:
     baseline_tier: T3
     sap_note: "2267463"                     # verified: S4TWL - LIS in EAM, covers S061-S065
     fix_pattern: "LIS abolished; redesign to Embedded Analytics / released CDS analytic view."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: PCL2
     type: table
@@ -263,7 +261,7 @@ catalog:
     baseline_tier: T3                       # infotype-dependent redesign, no flat mapping
     sap_note: "2409530"                     # NOTE NUMBER UNVERIFIED — concept confirmed, number not corroborated
     fix_pattern: "HR cluster declustered to transparent tables; target depends on cluster ID/infotype. Redesign."
-    source: kb:table-mappings.json
+    source: deloitte-kb
 
   # ----------------------------------------------------------------------------
   # Distractors / over-claim traps (changed-but-read-still-works; must NOT be a must-fix)
@@ -307,7 +305,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Material master header still valid. Reads need no remediation (MATNR length aside)."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: MAKT
     type: table
@@ -319,7 +317,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Material descriptions still valid. No remediation."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: VBAK
     type: table
@@ -331,7 +329,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Sales order header still valid; absorbs former VBUK status. A plain read is not a finding."
-    source: kb:table-mappings.json
+    source: deloitte-kb
 
   - object: VBAP
     type: table
@@ -343,7 +341,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Sales order item still valid; absorbs former VBUP status. Plain read is not a finding."
-    source: kb:table-mappings.json
+    source: deloitte-kb
 
   - object: BKPF
     type: table
@@ -355,7 +353,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Accounting document header still valid. No remediation."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: T001
     type: table
@@ -367,7 +365,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Company codes still valid. No remediation."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   - object: SKAT
     type: table
@@ -379,7 +377,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "G/L account texts still valid. No remediation."
-    source: evidence:s4twl-items.md
+    source: sap-s4twl
 
   # ----------------------------------------------------------------------------
   # World B — clean-core modernization only; NOT ATC-forced; must NOT be flagged must-fix
@@ -395,7 +393,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Working released BAPI. EML rewrite is key-only modernization, not ATC-forced. Do NOT flag."
-    source: kb:world-b-allowlist.json
+    source: deloitte-kb
 
   - object: BAPI_SALESORDER_CHANGE
     type: bapi
@@ -407,7 +405,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Working released change BAPI. Not an ATC finding. Do NOT flag."
-    source: kb:world-b-allowlist.json
+    source: deloitte-kb
 
   - object: BAPI_MATERIAL_GET_DETAIL
     type: bapi
@@ -419,7 +417,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Working read BAPI. Modernize only if clean-core mandated. Do NOT flag as must-fix."
-    source: kb:world-b-allowlist.json
+    source: deloitte-kb
 
   - object: BAPI_TRANSACTION_COMMIT
     type: bapi
@@ -431,7 +429,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Still valid in S/4. Counter-example against over-flagging. Do NOT flag."
-    source: kb:world-b-allowlist.json
+    source: deloitte-kb
 
   - object: BAPI_TRANSACTION_ROLLBACK
     type: bapi
@@ -443,7 +441,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Still valid in S/4. Do NOT flag."
-    source: kb:world-b-allowlist.json
+    source: deloitte-kb
 
   - object: BAPI_CUSTOMER_GETCREDITACCOUNT
     type: bapi
@@ -455,7 +453,7 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Classic credit removed. MAY be a real finding -> verify in SYCM on target release; not an automatic must-fix."
-    source: kb:world-b-allowlist.json
+    source: deloitte-kb
 
   - object: WS_DELIVERY_UPDATE
     type: function_module
@@ -467,4 +465,4 @@ catalog:
     baseline_tier: null
     sap_note: null
     fix_pattern: "Older delivery update FM. Possibly obsolete -> verify in SYCM, release-dependent."
-    source: kb:world-b-allowlist.json
+    source: deloitte-kb
