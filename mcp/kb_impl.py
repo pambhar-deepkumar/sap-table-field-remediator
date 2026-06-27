@@ -44,14 +44,22 @@ def _body(item_id):
     return text
 
 
+def _note_url(note):
+    """Synthesize the SAP Note URL from its number (docling doesn't extract PDF links).
+    Requires an S-user login to open; constructed, not scraped."""
+    return f"https://me.sap.com/notes/{str(note).strip()}"
+
+
 def _item_dict(item_id, full=False):
     """Assemble the public item record from the index metadata (+ body if full)."""
     meta = _index()["items"].get(item_id, {})
+    notes = meta.get("sap_notes", [])
     rec = {
         "item_id": item_id,
         "title": meta.get("title"),
         "pages": meta.get("pages"),
-        "sap_notes": meta.get("sap_notes", []),
+        "sap_notes": notes,
+        "note_urls": [_note_url(n) for n in notes],
         "components": meta.get("components", []),
     }
     if full:
