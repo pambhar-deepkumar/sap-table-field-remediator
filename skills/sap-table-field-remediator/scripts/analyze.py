@@ -150,6 +150,21 @@ def main() -> int:
         json.dump(report, f, indent=2)
         f.write("\n")
 
+    # Suppressed accesses go to a SIDECAR file (the scored report schema is
+    # additionalProperties:false, so they can't live in args.out). The detector
+    # SAW these statements; we record why each was dropped instead of silently
+    # discarding them. `not_in_catalog` items are the review-queue candidates
+    # (see working-notes/DECISIONS.md [2026-06-27]).
+    suppressed = classified.get("suppressed", [])
+    sup_path = os.path.join(os.path.dirname(args.out) or ".", "suppressed-report.json")
+    from collections import Counter
+    by_reason = dict(Counter(s.get("reason", "?") for s in suppressed))
+    with open(sup_path, "w") as f:
+        json.dump({"count": len(suppressed), "by_reason": by_reason,
+                   "suppressed": suppressed}, f, indent=2)
+        f.write("\n")
+    sys.stderr.write(f"[analyze] wrote {sup_path}: {len(suppressed)} suppressed ({by_reason})\n")
+
     # advisory output for the LLM stage (NOT part of the contract)
     sys.stderr.write(
         f"[analyze] wrote {args.out}: {len(findings)} findings "
