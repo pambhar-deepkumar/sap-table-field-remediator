@@ -31,6 +31,27 @@ no venv. Prerequisites:
 `uv` is optional — the skill detects and tiers findings without the KB; the KB only enriches the
 harder (T3) fixes with page-cited SAP evidence.
 
+## Update
+
+To pull a newer version into Claude Code, refresh the **marketplace first**, then update the plugin:
+
+```
+claude plugin marketplace update sap-remediator     # git-pulls the latest manifest
+claude plugin install sap-table-field-remediator@sap-remediator   # re-installs the new version
+```
+
+Or interactively: `/plugin` → **Marketplaces** → update `sap-remediator` → then update the plugin.
+A fresh `claude` session picks up the new version; an already-running session keeps the one it loaded
+at startup.
+
+> ⚠️ **Updates are version-gated, not commit-gated.** `claude plugin update` compares the `version`
+> in `.claude-plugin/plugin.json`, **not** the git commit. If you push code changes but leave the
+> version unchanged, `/plugin` reports *"already at the latest version"* and consumers silently keep
+> the **old** code. **Maintainers: bump `version` in `.claude-plugin/plugin.json` on every release**
+> (even docs/script-only changes), or the update won't propagate. The installed cache lives at
+> `~/.claude/plugins/cache/sap-remediator/sap-table-field-remediator/<version>/` — confirm the active
+> version there if a change isn't showing up.
+
 ## Try it
 
 In Claude Code, with no code of your own:
