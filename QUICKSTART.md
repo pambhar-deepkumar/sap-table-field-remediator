@@ -2,7 +2,7 @@
 
 Detect custom ABAP that breaks in an S/4HANA brownfield conversion, tier each fix by how
 much human judgment it needs, and get a machine-readable `remediation-report.json`. A
-page-cited Simplification-List knowledge base rides along over MCP.
+page-cited Simplification KB rides along over MCP.
 
 ## 1. Prerequisites (one-time)
 
@@ -38,7 +38,7 @@ finding per problematic statement — BSEG → ACDOCA (T3), VBUK → VBAK/VBAP (
 
 For a T3 finding, the skill calls the KB: `lookup("BSEG")` → item **SI-8.2 "Data Model
 Changes in FIN", pp. 239–247** — page-cited evidence it reads before proposing the ACDOCA
-rewrite. The catalog **locates**; the model **derives** the fix; a human signs off.
+rewrite. The Remediation Catalog **locates**; the model **derives** the fix; a human signs off.
 
 ## 4. Use it on your own code
 

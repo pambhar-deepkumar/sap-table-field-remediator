@@ -3,8 +3,14 @@
 A Claude Code **plugin** that scans custom ECC ABAP for table/field accesses that break in an
 **S/4HANA brownfield conversion**, tiers each fix by how much human judgment it needs (T1/T2/T3),
 and emits a machine-readable `remediation-report.json`. Detection is deterministic (abaplint AST +
-catalog); the LLM does judgment only on the hard cases; a human signs off. Ships a **page-cited
-Simplification-List knowledge base** served over MCP.
+the **Remediation Catalog**); the LLM does judgment only on the hard cases; a human signs off. Ships
+a **page-cited Simplification KB** served over MCP.
+
+> **Three names, kept distinct:** the **SAP Simplification List** is SAP's official ECC→S/4 change
+> document (the upstream source). The **Remediation Catalog** (`simplification-list.yaml`) is *our*
+> curated, per-engagement lookup keyed by table/field object — status, tier, target. The
+> **Simplification KB** is SAP's document chunked + page-cited over MCP, queried by the LLM for
+> evidence on hard cases.
 
 ## Install
 
@@ -43,14 +49,14 @@ Full walkthrough: **[QUICKSTART.md](QUICKSTART.md)**.
    `EXEC SQL`) via abaplint's AST — not regex.
 2. **Classify & tier** each finding: T1 mechanical (`auto_apply`), T2 bounded (`propose`), T3
    intent-needed (`escalate`). A structural guard guarantees **0 unsafe auto-applies, by construction**.
-3. **Derive** the variant-correct fix for T3 cases from the bundled Simplification-List KB
+3. **Derive** the variant-correct fix for T3 cases from the bundled Simplification KB
    (page-cited), reached over MCP — evidence, not an oracle.
 4. **Emit** a schema-valid `remediation-report.json`. A human reviews and signs off.
 
 ## Evaluation
 
 Blind-run against a synthetic ground-truth corpus (18 abapGit objects, 30 labeled findings across
-SD/MM/FI). The skill saw only the code + the public catalog; the scorer ran outside the sandbox
+SD/MM/FI). The skill saw only the code + the public Remediation Catalog; the scorer ran outside the sandbox
 against a secret answer key it never exposed to the skill. Single run, `claude-opus-4-8`, analysis
 mode, 2026-06-27.
 

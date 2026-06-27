@@ -16,7 +16,7 @@ conversion", "run the ATC table/field check". Inputs: a directory of `*.abap` an
 catalog `simplification-list.yaml`.
 
 ## Mental model (do not skip)
-- **The catalog is truth.** `simplification-list.yaml` (key `object`; statuses VALID, CHANGED,
+- **The Remediation Catalog is truth.** `simplification-list.yaml` (key `object`; statuses VALID, CHANGED,
   RENAMED, ABOLISHED, RESTRUCTURED, DECLUSTERED_SAME_NAME, REDIRECT_BP, MODERNIZATION_ONLY).
   `scripts/catalog.py` loads it; never hand-maintain a second table.
 - **Detection is AST, not regex.** `scripts/detect.js` uses abaplint to enumerate DB-access
@@ -60,10 +60,10 @@ What `analyze.py` does for you (no LLM tokens):
 For each item in `escalations`, open the **one** matching playbook
 (`references/playbooks/{syntactic|structural|semantic|functional}.md`) and the source line, then:
 
-**Ground the fix in the Simplification List (if the KB server is connected).** Before you
-write `replacement`/`rationale` for an escalation, call the knowledge-base MCP tool
+**Ground the fix in the SAP Simplification List (via the Simplification KB, if connected).** Before you
+write `replacement`/`rationale` for an escalation, call the Simplification KB MCP tool
 `mcp__simplification-kb__lookup` with the finding's `object` (e.g. `lookup(object="BSEG")`). It
-returns the matching Simplification-List item(s) — title, **page citation**, and body — so you
+returns the matching SAP Simplification Item(s) — title, **page citation**, and body — so you
 derive the *variant-correct* fix for this statement from primary SAP guidance instead of guessing.
 Use `mcp__simplification-kb__search` for the multi-hop case (e.g. `search("pricing data model")`
 when the object alone isn't enough). The KB is **evidence, not an oracle**: read it, then decide.
@@ -110,7 +110,7 @@ findings and pipe through `guard.py`. The headline "unsafe auto-applies = 0" mus
 - Scan `*.abap` ONLY. Ignore paired `*.prog.xml` / `*.clas.xml` (metadata, not code).
 - Two modes: `analysis` (report only — the scored path) and `apply` (also writes T1 patches; then
   `python3 scripts/residual_check.py --src ./src` gates that no must-fix reference survives).
-- **Simplification-List KB (optional enrichment).** To give the escalation step §2 the KB tools,
+- **Simplification KB (optional enrichment).** To give the escalation step §2 the KB tools,
   pass the server config and allow its tools:
   ```
   claude -p "remediate ./src for S/4HANA" \
@@ -123,7 +123,7 @@ findings and pipe through `guard.py`. The headline "unsafe auto-applies = 0" mus
 | Script | Role |
 |---|---|
 | `scripts/detect.js` | abaplint-AST detector → DB-access statements (read/write, dynamic, offsets) |
-| `scripts/catalog.py` | loads `simplification-list.yaml` (the KB; auto-discovers it at runtime) |
+| `scripts/catalog.py` | loads the Remediation Catalog `simplification-list.yaml` (auto-discovers it at runtime) |
 | `scripts/classify.py` | catalog lookup → world/category/tier/action + `escalations` list |
 | `scripts/guard.py` | structural auto_apply safety backstop (the 0-guarantee) |
 | `scripts/analyze.py` | one-command pipeline: detect→classify→guard→validate→emit report |
