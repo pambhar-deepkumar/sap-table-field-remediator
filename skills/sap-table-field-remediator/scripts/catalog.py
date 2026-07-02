@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""catalog.py — load the S/4HANA simplification catalog (single source of truth).
+"""catalog.py — load the S/4HANA Remediation Catalog (the evidence locator, not an oracle).
 
 The catalog is `simplification-list.yaml` (schema: key `object`; statuses VALID,
 CHANGED, RENAMED, ABOLISHED, RESTRUCTURED, DECLUSTERED_SAME_NAME, REDIRECT_BP,

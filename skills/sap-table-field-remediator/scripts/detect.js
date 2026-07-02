@@ -2,8 +2,9 @@
 /*
  * detect.js — deterministic ABAP DB-access detector (abaplint AST backbone).
  *
- * Emits ONE record per DB-access *statement* (not per textual mention), so a file
- * that names BSEG on 15 lines yields findings only for the SELECT/IMPORT/EXEC lines.
+ * Emits ONE record per DB-access *statement* (not per textual mention) — plus field-level faults
+ * (MATNR truncation on assignment, VBTYP literal compares) — so a file that names BSEG on 15 lines
+ * yields findings only on the real access/fault lines, not TABLES/TYPES declarations.
  * Solves statement boundaries, multi-line SELECT, JOINs, IMPORT ... FROM DATABASE,
  * EXEC SQL ... ENDEXEC, and read-vs-write in one pass — things a regex gets wrong.
  *
@@ -252,6 +253,66 @@ function analyzeAbapFile(abapFile, relpath) {
         statement_type: type,
         snippet: snippet(s),
       });
+      continue;
+    }
+
+    // --- field-level faults on NON-DB statements (length/value-changed fields) --- //
+    // These carry no DB object; classify.py resolves whether the referenced field is a
+    // catalogued `status: CHANGED` field (only then is it a finding) — that keeps precision.
+
+    // (a) assignment that may TRUNCATE a length-changed field into a shorter target
+    //     e.g. MOVE gs_mseg-matnr TO lv_matnr, where lv_matnr is CHAR18 (MATNR is now 40).
+    if (type === "Move") {
+      const tgt = s.findFirstExpression(Expressions.Target);
+      const src = s.findFirstExpression(Expressions.Source);
+      if (tgt && src) {
+        stmts.push({
+          file: relpath,
+          line: row,
+          kind: "field_assign",
+          access: "assign",
+          objects: [],
+          dynamic: false,
+          dynamic_expr: null,
+          offsets: [],
+          source_expr: src.concatTokens().trim(),
+          target_expr: tgt.concatTokens().trim(),
+          snippet: snippet(s),
+        });
+      }
+      continue;
+    }
+
+    // (b) literal comparison against a value-WIDENED field
+    //     e.g. IF vbtyp = 'C', where VBTYP widened CHAR1 -> CHAR4 (single-char literals break).
+    if (type === "If" || type === "ElseIf") {
+      const hasCharLiteral = s.getTokens().some((t) => /^'[^']*'$/.test(t.getStr()));
+      if (hasCharLiteral) {
+        const fields = s
+          .findAllExpressions(Expressions.FieldChain)
+          .concat(s.findAllExpressions(Expressions.SimpleFieldChain))
+          .map((e) => e.concatTokens().trim());
+        const literals = s
+          .getTokens()
+          .map((t) => t.getStr())
+          .filter((x) => /^'[^']*'$/.test(x));
+        if (fields.length) {
+          stmts.push({
+            file: relpath,
+            line: row,
+            kind: "literal_compare",
+            access: "compare",
+            objects: [],
+            dynamic: false,
+            dynamic_expr: null,
+            offsets: [],
+            fields,
+            literals,
+            snippet: snippet(s),
+          });
+        }
+      }
+      continue;
     }
   }
   return stmts;

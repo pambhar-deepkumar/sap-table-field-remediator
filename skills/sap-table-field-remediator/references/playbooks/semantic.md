@@ -8,15 +8,16 @@ skill earns its keep: the LLM must understand the read's *intent* before proposi
 1. State the reshape (catalog `fix_pattern`): what moved, what changed key/granularity.
 2. Emit a sharp `intent_question` that a functional analyst can answer — this is the deliverable
    in the scored run. **Emit it and STOP; never await an answer** (no human in the headless run).
-3. Propose the most likely target (`replacement`) conditioned on the probable intent.
+3. Propose the most likely target (`replacement`), conditioned on the probable intent — **prefer the
+   released CDS view over the raw successor table** (BSEG→`I_JournalEntryItem`, not raw `ACDOCA`).
 4. Emit `tier: T3`, `action: escalate`, `category: semantic`.
 
 ## Canonical cases
-- **BSEG → ACDOCA** (Universal Journal): line items now in ACDOCA; renames BUKRS→RBUKRS,
-  HKONT→RACCT, BUZEI→DOCLN (3→6 char), add RLDNR='0L'. *Intent:* full line-item detail vs
-  aggregated journal? which ledger?
-- **MKPF / MSEG → MATDOC**: header+item merged; stock computed on the fly. *Intent:* are append
-  fields / stock-snapshot semantics relied on?
+- **BSEG → `I_JournalEntryItem`** (released CDS over the Universal Journal / ACDOCA): read line items
+  via the released view; underlying ACDOCA renames BUKRS→RBUKRS, HKONT→RACCT, BUZEI→DOCLN (3→6 char),
+  ledger RLDNR='0L'. *Intent:* full line-item detail vs aggregated journal? which ledger?
+- **MKPF / MSEG → `I_MaterialDocumentHeader` / `I_MaterialDocumentItem`** (released CDS over MATDOC):
+  header+item merged; stock computed on the fly. *Intent:* are append fields / stock-snapshot semantics relied on?
 - **MATNR offset-parsing** (`gv_matnr+9(9)`): code assumes the 18-char layout; under length 40 the
   slice is wrong. *Intent:* what does the sub-range mean (a real sub-key, or a legacy convention)?
 
@@ -29,8 +30,10 @@ skill earns its keep: the LLM must understand the read's *intent* before proposi
 ```abap
 " before
 SELECT bukrs hkont buzei dmbtr FROM bseg WHERE ... INTO TABLE @lt.
-" proposed (T3 — confirm intent + ledger before applying)
-SELECT rbukrs racct docln dmbtr FROM acdoca WHERE ... AND rldnr = '0L' INTO TABLE @lt.
+" proposed (T3 — confirm intent + ledger; prefer the RELEASED CDS view over raw ACDOCA)
+SELECT ... FROM I_JournalEntryItem WHERE ... INTO TABLE @lt.
+"   released view over ACDOCA; take field names from the view definition
+"   (physical ACDOCA equivalents: BUKRS→RBUKRS, HKONT→RACCT, BUZEI→DOCLN, ledger RLDNR='0L')
 ```
 
 ## Per-object overrides

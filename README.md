@@ -67,7 +67,8 @@ Full walkthrough: **[QUICKSTART.md](QUICKSTART.md)**.
 ## What it does
 
 1. **Detect** every DB-access statement (SELECT/JOIN/FOR ALL ENTRIES, `IMPORT … FROM DATABASE`,
-   `EXEC SQL`) via abaplint's AST — not regex.
+   `EXEC SQL`) via abaplint's AST — not regex — **plus field-level faults** outside DB statements
+   (MATNR truncation on assignment, VBTYP single-char comparisons).
 2. **Classify & tier** each finding: T1 mechanical (`auto_apply`), T2 bounded (`propose`), T3
    intent-needed (`escalate`). A structural guard guarantees **0 unsafe auto-applies, by construction**.
 3. **Derive** the variant-correct fix for T3 cases from the bundled Simplification KB
@@ -76,26 +77,26 @@ Full walkthrough: **[QUICKSTART.md](QUICKSTART.md)**.
 
 ## Evaluation
 
-Blind-run against a synthetic ground-truth corpus (18 abapGit objects, 30 labeled findings across
+Blind-run against a synthetic ground-truth corpus (18 abapGit objects, 31 labeled findings across
 SD/MM/FI). The skill saw only the code + the public Remediation Catalog; the scorer ran outside the sandbox
 against a secret answer key it never exposed to the skill. Single run, `claude-opus-4-8`, analysis
-mode, 2026-06-27.
+mode, 2026-07-02 (label `v2-2026-07-02`).
 
 | Metric | Result |
 |---|---|
-| Detection F1 | **90.9%** (precision 93.8% · recall 88.2%) |
-| Tier accuracy | **100%** (15/15) |
+| Detection F1 | **97.3%** (precision 94.7% · recall 100%, 18/18) |
+| Tier accuracy | **100%** (18/18) |
 | Unsafe auto-applies | **0** (guaranteed by construction) |
 | Distractor over-claims | **0 / 7** (0 / 5 on clean negatives) |
-| Correct-replacement rate | 80% (12/15) |
-| Cost / run | **$2.75** (~$0.18 per correct finding · ~5 min · 30 turns) |
+| Correct-replacement rate | 94.4% (17/18) |
+| Cost / run | **$2.02** (~$0.11 per correct finding · ~4.6 min · 35 turns) |
 
-Full scorecard: [`eval/scorecard-opus48-v1.md`](eval/scorecard-opus48-v1.md).
+Full scorecard: [`eval/scorecard-v2-2026-07-02.md`](eval/scorecard-v2-2026-07-02.md).
 
-**Caveats (read before quoting):** tier accuracy is perfect but rests on a thin base for the easy
-tiers (2 T1, 3 T2 cases; T3 is well-covered) — corpus rebalancing is in progress. The two misses
-(F-MM-03, F-SD-05) and one spurious flag are listed in the scorecard. Single run, so cost is a point
-estimate.
+**Caveats (read before quoting):** one spurious over-claim (PCL2) remains — it accounts for the 94.7%
+precision. Tier accuracy is perfect but the easy tiers still rest on a thin base (T3 is well-covered).
+Single run, so cost is a point estimate. Supersedes the 2026-06-27 `opus48-v1` run (F1 90.9% /
+recall 15-of-17), which predated field-level detection.
 
 ## How it's packaged
 

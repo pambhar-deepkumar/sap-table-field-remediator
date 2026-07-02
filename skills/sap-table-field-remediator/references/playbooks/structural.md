@@ -5,7 +5,7 @@
 JOIN/target must be re-pointed. Human reads the proposal, but no deep intent question.
 
 ## Fix approach
-- Re-point the read to the absorbing table / released CDS view from the catalog.
+- Re-point the read to the **released CDS view** (preferred, e.g. VBUK→`I_SalesOrder`) or the absorbing table from the catalog.
 - Drop the obsolete join; move the read fields onto the new home table by document category.
 - Emit `tier: T2`, `action: propose`, `category: structural`, with a concrete `replacement` and a
   one-paragraph `rationale`. Do NOT auto-apply (the join rewrite needs a human glance).
@@ -16,9 +16,11 @@ JOIN/target must be re-pointed. Human reads the proposal, but no deep intent que
 - **VBUP → VBAP** (item status folded in): read GBSTA from VBAP (or LIPS).
 - **VBTYP → VBTYPL** (CHAR1 → CHAR4 widening): fix literal comparisons; verify on target release.
 
-## Field renames live INSIDE this fix
-A `SELECT gbstk vbtyp FROM vbuk` is **one VBUK finding**, not separate GBSTK/VBTYP findings.
-The `replacement` + `rationale` carry the field moves (GBSTK→VBAK-GBSTK, VBTYP→VBAK-VBTYPL).
+## Renamed fields live INSIDE this fix — a WIDENED field used in logic does not
+A `SELECT gbstk vbtyp FROM vbuk` read is **one VBUK finding**; the `replacement` + `rationale` carry
+the field moves (GBSTK→VBAK-GBSTK, VBTYP→VBAK-VBTYPL). BUT a length/value-CHANGED field used
+**outside** the read — e.g. `IF vbtyp = 'C'` (VBTYP widened CHAR1→CHAR4) — is its OWN finding
+(see `taxonomy.md` field-level detection).
 
 ## Escalation triggers (→ T3)
 - A **write** to the folded table → `escalate` (`functional.md`).

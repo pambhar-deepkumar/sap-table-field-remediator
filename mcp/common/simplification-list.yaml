@@ -12,7 +12,8 @@
 #     well-behaved skill does NOT flag a read as a must-fix. Used as the over-claim distractor.
 #   - VBUK/VBUP: still physically present in S/4 but NOT populated for new docs (silent empty joins).
 #   - KNA1/LFA1: still exist and stay populated via CVI; a plain read often still works -> verify-leaning.
-#   - BSEG/MKPF/MSEG: still exist (compat views); the *correct* read target is ACDOCA/MATDOC.
+#   - BSEG/MKPF/MSEG: still exist (compat views); the *correct* target is the RELEASED CDS view
+#     (I_JournalEntryItem / I_MaterialDocument*) — ACDOCA/MATDOC are the underlying compat store.
 #
 # Field semantics:
 #   object            ECC table or field name

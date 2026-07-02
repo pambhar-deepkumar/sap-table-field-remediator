@@ -33,12 +33,12 @@ Open Claude Code and just ask:
 > **"Run the SAP Table & Field Remediator on the bundled example and show me the report."**
 
 It will scan `examples/zdemo_s4_check.abap` and produce a `remediation-report.json` with one
-finding per problematic statement — BSEG → ACDOCA (T3), VBUK → VBAK/VBAP (T2), KONV pricing
-(T3), MATNR length (T1) — while correctly **suppressing** the benign `MARA` read.
+finding per problematic statement — BSEG → I_JournalEntryItem (T3), VBUK → I_SalesOrder (T2),
+KONV pricing (T3), MATNR length (T1) — while correctly **suppressing** the benign `MARA` read.
 
 For a T3 finding, the skill calls the KB: `lookup("BSEG")` → item **SI-8.2 "Data Model
-Changes in FIN", pp. 239–247** — page-cited evidence it reads before proposing the ACDOCA
-rewrite. The Remediation Catalog **locates**; the model **derives** the fix; a human signs off.
+Changes in FIN", pp. 239–247** — page-cited evidence it reads before proposing the fix (read via
+the released view `I_JournalEntryItem`). The Remediation Catalog **locates**; the model **derives** the fix; a human signs off.
 
 ## 4. Use it on your own code
 

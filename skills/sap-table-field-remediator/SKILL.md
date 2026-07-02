@@ -16,13 +16,16 @@ conversion", "run the ATC table/field check". Inputs: a directory of `*.abap` an
 catalog `simplification-list.yaml`.
 
 ## Mental model (do not skip)
-- **The Remediation Catalog is truth.** `simplification-list.yaml` (key `object`; statuses VALID, CHANGED,
+- **The Remediation Catalog is the evidence locator — not an oracle.** `simplification-list.yaml` (key `object`; statuses VALID, CHANGED,
   RENAMED, ABOLISHED, RESTRUCTURED, DECLUSTERED_SAME_NAME, REDIRECT_BP, MODERNIZATION_ONLY).
   `scripts/catalog.py` loads it; never hand-maintain a second table.
 - **Detection is AST, not regex.** `scripts/detect.js` uses abaplint to enumerate DB-access
-  *statements* and their target object + read-vs-write. This is what handles multi-line SELECT,
+  *statements* — plus **field-level faults** (MATNR truncation on assignment, VBTYP single-char
+  literal compares) — and their target object + read-vs-write. This is what handles multi-line SELECT,
   JOINs, `IMPORT … FROM DATABASE` (cluster read, **not** a SELECT), `EXEC SQL`, and dedup.
-- **One finding per statement** keyed on the cataloged object. Field renames live inside the fix.
+- **One finding per statement** keyed on the cataloged object. *Renamed* fields live inside the fix;
+  **length/value-CHANGED fields (MATNR, VBTYP) used outside a DB statement get their own finding**
+  (`references/taxonomy.md`). Tier only ratchets up — worst-fault-wins.
 - **Safety is structural.** `scripts/guard.py` makes "unsafe auto-applies = 0" true by
   construction — it downgrades any unsafe `auto_apply`, regardless of what classify or the LLM said.
 - See `references/taxonomy.md` for the full routing + suppression spec; load a single
@@ -121,7 +124,58 @@ findings and pipe through `guard.py`. The headline "unsafe auto-applies = 0" mus
 - `usage` is emitted as **zeros** — you cannot read your own token counters; the harness fills it.
 - `analyze.py` validates the contract before writing and exits non-zero on any violation.
 
+## After the report (interactive worklist + human sign-off)
+Turn the machine report into recorded human decisions, then a human-readable outcome.
+**Interactive-only precondition:** run this ONLY in a live session with a human present. The
+headless/scored path (`claude -p`) STOPS at `remediation-report.json` (§Headless run contract) and
+never touches the worklist.
+
+**Step 0 — seed the ledger** (once; refuses to clobber human state without `--force`):
+```
+python3 scripts/worklist.py init --report ./remediation-report.json
+```
+This builds `remediation-ledger.json` from report findings + `review-queue.json` items, all `pending`.
+
+**Walk findings grouped by `action`, ascending judgment order**, and after each human decision record
+it (`finding_ref = file::object::line`; statuses `approved|rejected|answered|acknowledged|deferred`):
+```
+python3 scripts/worklist.py record --ref "<finding_ref>" --status <...> [--answer "..."] [--comment "..."]
+```
+- **T1 `auto_apply`** → present all T1s together, batch `--status approved`. "Approve" authorizes the
+  mechanical fix; the ABAP edit itself is roadmap (apply-mode is a no-op today).
+- **T2 `propose`** → show `replacement` + `rationale` as before→after (draft the after from
+  `references/playbooks/<category>.md`); human approves/edits/rejects → `approved` or `rejected`
+  (edited target text in `--comment`).
+- **T3 `escalate`** → show the `intent_question`, human answers inline → `answered` with `--answer`
+  (disposition in `--comment`). This is the headline human sign-off moment.
+- **`verify`** → `acknowledged` (optional owner in `--comment`).
+- **`route_to_sibling`** → `deferred` (handoff note in `--comment`).
+- **review-queue items** (e.g. MARD `not_in_catalog`) → decide fix or skip + comment (this is §2.1's
+  decide-or-skip; the item is already in the ledger).
+
+Per-bucket prompt scripting lives in `references/after-report.md` — load it when running the walk.
+
+**Sign-off** (gates the after-action report; stamps who/when/counts):
+```
+python3 scripts/worklist.py signoff --by "<name>"
+```
+
+**Render the outcome** → `after-action-report.md` + `.html`:
+```
+python3 scripts/after_action.py --report ./remediation-report.json --ledger ./remediation-ledger.json
+```
+
+**Optional (demo)** → one skill-improvement recommendation + a proposed eval case:
+```
+python3 scripts/retro.py --ledger ./remediation-ledger.json --review-queue ./review-queue.json
+```
+
+**What is NOT done here:** no ABAP is edited (apply-mode is roadmap); the review surface is this
+session, not ADT or a web UI (roadmap); the retro is a single worked example, not a general engine.
+
 ## Headless run contract (`claude -p`, no human present)
+- **The worklist and sign-off are interactive-only** (§After the report) — the scored path is
+  unchanged: it produces `remediation-report.json` and STOPS, never seeding a ledger.
 - **`escalate` = emit the `intent_question` and STOP.** Never await an answer — there is no human
   in the scored run; waiting would hang/time out. The ask-then-proceed loop is a *production*
   workflow, not the scored path. The classification still happens; only the human turn is skipped.
@@ -140,12 +194,15 @@ findings and pipe through `guard.py`. The headline "unsafe auto-applies = 0" mus
 ## Scripts (L3 — executed, not read into context)
 | Script | Role |
 |---|---|
-| `scripts/detect.js` | abaplint-AST detector → DB-access statements (read/write, dynamic, offsets) |
+| `scripts/detect.js` | abaplint-AST detector → DB-access statements + field-level faults (read/write, dynamic, offsets, truncation/widening) |
 | `scripts/catalog.py` | loads the Remediation Catalog `simplification-list.yaml` (auto-discovers it at runtime) |
 | `scripts/classify.py` | catalog lookup → world/category/tier/action + `escalations` list |
 | `scripts/guard.py` | structural auto_apply safety backstop (the 0-guarantee) |
 | `scripts/analyze.py` | one-command pipeline: detect→classify→guard→validate→emit report |
 | `scripts/residual_check.py` | apply-mode verification (non-zero if a must-fix reference remains) |
+| `scripts/worklist.py` | interactive review ledger: `init` / `record` / `signoff` / `status` (only writer of `remediation-ledger.json`) |
+| `scripts/after_action.py` | report + ledger → human-readable after-action report (`.md` + `.html`) |
+| `scripts/retro.py` | ledger + review-queue → one skill-improvement recommendation + a proposed eval case |
 
 ## Common failures
 - **`@abaplint/core not installed`** → run `bash scripts/setup.sh`.

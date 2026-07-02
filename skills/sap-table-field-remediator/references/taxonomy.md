@@ -34,6 +34,15 @@ ATC covers categories 1–2; **we earn our keep at 3–4 — value peaks at 3, t
 `action`: T1→`auto_apply`, T2→`propose`, T3→`escalate`; then **guard.py** is the structural
 backstop — it independently re-checks and downgrades any unsafe `auto_apply` to `escalate`.
 
+`replacement` (recommended target) — **released-API-first** (`preferred_replacement()`).
+T2/T3 findings surface the released CDS view (`cds_view`) when the catalog has one: per the
+2026-06-30 Deloitte review, a `SELECT` on the raw successor table (ACDOCA) works but the
+released API (`I_JournalEntryItem`) is the clean-core-correct forward target. **T1 syntactic
+auto-applies are the exception** — there the successor table is a field-identical 1:1
+(`KONV → PRCD_ELEMENTS`) and IS the mechanical fix; its compat view (`V_KONV`) is not an
+applicable target. The underlying table + field renames still appear in `rationale` /
+`intent_question` for the human reviewer.
+
 ## Suppression — emit NOTHING on these (precision traps)
 
 | What | In corpus | Why |
@@ -51,8 +60,15 @@ Only **direct CDCLS cluster IMPORT/EXPORT** would make a change-document access 
 - **One finding per DB-access statement**, keyed on the cataloged object — a JOIN on MKPF+MSEG
   yields a MKPF finding *and* an MSEG finding; a file naming BSEG on 15 lines yields findings only
   on the `SELECT`/`IMPORT`/`EXEC` lines, never `TABLES`/`TYPES` declarations.
-- **Field renames live inside the fix**, not as separate findings: a `SELECT FROM vbuk` reading
-  GBSTK/VBTYP is ONE VBUK finding (replacement carries the field moves), not three.
+- **Renamed/relocated fields live inside the fix**, not as separate findings: a `SELECT FROM vbuk`
+  reading GBSTK/VBTYP is ONE VBUK finding (replacement carries the field moves), not three.
+- **Length/value-CHANGED fields used OUTSIDE a DB statement DO get their own finding** — this is the
+  field-level detection [DECISIONS.md 2026-07-01, Decision B]. Only catalog `status: CHANGED` fields
+  qualify (MATNR 18→40, VBTYP CHAR1→CHAR4), so precision holds:
+  - `MOVE …-matnr TO tgt` where `tgt` is a shorter fixed-length char → truncation, **T1** (widen target).
+  - `IF vbtyp = 'C'` (single-char literal on a widened field) → **T2** (fix the comparisons).
+  - Worst-fault-wins [Decision A]: `tier` only ever ratchets UP, so a field fault on the same line as
+    a table fault cannot lower severity.
 
 ## Scored-metric implications (why the rules are shaped this way)
 

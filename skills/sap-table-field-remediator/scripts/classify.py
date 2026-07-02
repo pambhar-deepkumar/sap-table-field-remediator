@@ -97,6 +97,58 @@ def resolve_constant(src: str, var: str) -> str | None:
     return None
 
 
+def changed_fields(cat: dict) -> set:
+    """Catalogued fields whose length/value CHANGED in S/4 (MATNR 18->40, VBTYP CHAR1->4).
+
+    These are the ONLY fields a plain assignment/comparison can silently break, so they
+    gate the field-level detection (kept tiny -> precision stays high)."""
+    return {o for o, e in cat.items()
+            if e.get("type") == "field" and e.get("status") == "CHANGED"}
+
+
+def resolve_changed_field(src: str, expr: str | None, changed: set) -> str | None:
+    """Return the catalogued CHANGED field an expression's leaf refers to, or None.
+
+    Matches directly on the leaf name (gs_mseg-matnr -> MATNR; vbtyp -> VBTYP), else
+    traces a `leaf TYPE|LIKE <tab>-<field>` declaration to a changed field."""
+    if not expr:
+        return None
+    leaf = expr.strip().split("-")[-1].strip()
+    if not leaf:
+        return None
+    if leaf.upper() in changed:
+        return leaf.upper()
+    m = re.search(r"\b" + re.escape(leaf) + r"\b\s+(?:TYPE|LIKE)\s+([A-Za-z_][\w-]*)",
+                  src, re.IGNORECASE)
+    if m:
+        f = m.group(1).split("-")[-1].upper()
+        if f in changed:
+            return f
+    return None
+
+
+def truncating_target(src: str, expr: str | None, field: str) -> bool:
+    """True if an assignment target is a fixed-length char SHORTER than the field's S/4
+    length (40 for MATNR) -> the extended value is silently truncated.
+
+    Conservative: a target typed AS the field (TYPE matnr / LIKE x-matnr) is safe; only an
+    explicit short fixed length flags. Unknown -> False (never over-flag)."""
+    if not expr:
+        return False
+    leaf = expr.strip().split("-")[-1].strip()
+    if re.search(r"\b" + re.escape(leaf) + r"\b\s+(?:TYPE|LIKE)\s+[A-Za-z_][\w-]*"
+                 + re.escape(field), src, re.IGNORECASE):
+        return False  # typed as the field itself -> no truncation
+    m = re.search(r"\b" + re.escape(leaf) + r"\b\s*\(\s*(\d+)\s*\)", src)
+    if m:
+        return int(m.group(1)) < 40
+    m = re.search(r"\b" + re.escape(leaf) + r"\b\s+TYPE\s+c\s+LENGTH\s+(\d+)",
+                  src, re.IGNORECASE)
+    if m:
+        return int(m.group(1)) < 40
+    return False
+
+
 def base_field_of_offset(src: str, base_var: str) -> str | None:
     """Trace an offset base variable's declared type to a catalogued field.
 
@@ -157,11 +209,33 @@ def intent_question_for(obj: str, category: str | None, entry: dict) -> str:
     )
 
 
+def preferred_replacement(entry: dict, tier: str | None) -> str | None:
+    """Recommended remediation target, released-API-first.
+
+    Deloitte expert review (2026-06-30, Bishnu Trivedi): the clean-core-correct target
+    is the RELEASED CDS API, not the raw successor table — a SELECT on ACDOCA works but
+    I_JournalEntryItem is the sanctioned forward path. So for structural/semantic/
+    functional findings (T2/T3) we surface the released CDS view when the catalog has
+    one. The T1 SYNTACTIC auto-apply is the deliberate exception: there the successor
+    table is a field-identical 1:1 (KONV -> PRCD_ELEMENTS) and IS the mechanical fix, so
+    its compat view (V_KONV) would be a wrong, non-applicable target. Falls back to
+    whichever target exists. See working-notes/DECISIONS.md [2026-07-01].
+    """
+    s4 = entry.get("s4_replacement")
+    s4 = s4 if (s4 and s4 != "<same>") else None
+    cds = entry.get("cds_view")
+    # In-place length/value change (MATNR 18->40, VBTYP CHAR1->CHAR4): the fix is
+    # adjusting the access in place, not re-pointing to a CDS view — keep the object.
+    if entry.get("status") == "CHANGED":
+        return s4 or cds or None
+    if tier in ("T2", "T3") and cds:
+        return cds
+    return s4 or cds or None
+
+
 def finding(file, line, obj, entry, tier, action, category, escalated,
             access="read", must_escalate=False):
-    s4 = entry.get("s4_replacement")
-    cds = entry.get("cds_view")
-    replacement = s4 if s4 and s4 != "<same>" else (cds or None)
+    replacement = preferred_replacement(entry, tier)
     rationale = (
         f"{obj}: status {entry.get('status')} (world {entry.get('world')}). "
         f"{(entry.get('fix_pattern') or '').strip()}"
@@ -200,6 +274,7 @@ def classify(detect: dict, cat: dict) -> dict:
     review_queue = []  # accesses the detector SAW but the catalog can't classify
                        # (not_in_catalog). NOT silently dropped: surfaced for KB-search
                        # + expert decide-or-skip. See DECISIONS.md [2026-06-27].
+    changed = changed_fields(cat)  # length/value-changed fields (MATNR, VBTYP) for field-level faults
 
     for st in detect["statements"]:
         file = st["file"]
@@ -232,6 +307,33 @@ def classify(detect: dict, cat: dict) -> dict:
                     {"file": file, "line": line, "object": field, "reason": "matnr_offset_read",
                      "note": "Read-only offset compare; LLM to judge if it breaks under length 40."}
                 )
+            continue
+
+        # --- field-level faults on non-DB statements (length/value-changed fields) --- #
+        # Worst-fault-wins [DECISIONS.md 2026-07-01]: these surface faults the DB-access
+        # scan can't see (MATNR truncation on assign, VBTYP single-char literal compare).
+        # Gated to catalogued CHANGED fields, so precision holds.
+        if kind == "field_assign":
+            fld = resolve_changed_field(src, st.get("source_expr"), changed)
+            if fld and fld in cat and truncating_target(src, st.get("target_expr"), fld):
+                entry = cat[fld]
+                tier = entry.get("baseline_tier") or "T1"
+                f = finding(file, line, fld, entry, tier, TIER_ACTION.get(tier, "propose"),
+                            category_for(entry.get("status"), tier, "read", False), False,
+                            access="assign", must_escalate=False)
+                findings.append(f)
+            continue
+
+        if kind == "literal_compare":
+            fld = next((r for r in (resolve_changed_field(src, fx, changed)
+                                    for fx in st.get("fields", [])) if r), None)
+            if fld and fld in cat:
+                entry = cat[fld]
+                tier = entry.get("baseline_tier") or "T2"
+                f = finding(file, line, fld, entry, tier, TIER_ACTION.get(tier, "propose"),
+                            category_for(entry.get("status"), tier, "read", False), False,
+                            access="compare", must_escalate=False)
+                findings.append(f)
             continue
 
         # --- resolve the accessed object (handle dynamic targets) --------- #

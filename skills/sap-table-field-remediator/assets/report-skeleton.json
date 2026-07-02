@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "run": {
     "model": "claude-opus-4-8",
-    "skill_version": "1.0.0",
+    "skill_version": "1.1.0",
     "mode": "analysis"
   },
   "scanned_files": [],
@@ -16,8 +16,8 @@
       "tier": "T3",
       "action": "escalate",
       "category": "semantic",
-      "replacement": "ACDOCA",
-      "rationale": "BSEG is RESTRUCTURED in S/4HANA; line items live in the Universal Journal (ACDOCA).",
+      "replacement": "I_JournalEntryItem",
+      "rationale": "BSEG is RESTRUCTURED in S/4HANA; read line items via the released CDS view I_JournalEntryItem (over the Universal Journal ACDOCA), not the raw table. Field renames: BUKRS->RBUKRS, HKONT->RACCT, BUZEI->DOCLN.",
       "intent_question": "Does this read need full BSEG line-item granularity or is the ACDOCA/I_JournalEntryItem target sufficient? Confirm ledger (RLDNR).",
       "patch": null
     }

@@ -12,7 +12,8 @@
 #     well-behaved skill does NOT flag a read as a must-fix. Used as the over-claim distractor.
 #   - VBUK/VBUP: still physically present in S/4 but NOT populated for new docs (silent empty joins).
 #   - KNA1/LFA1: still exist and stay populated via CVI; a plain read often still works -> verify-leaning.
-#   - BSEG/MKPF/MSEG: still exist (compat views); the *correct* read target is ACDOCA/MATDOC.
+#   - BSEG/MKPF/MSEG: still exist (compat views); the *correct* target is the RELEASED CDS view
+#     (I_JournalEntryItem / I_MaterialDocument*) — ACDOCA/MATDOC are the underlying compat store.
 #
 # Field semantics:
 #   object            ECC table or field name
@@ -214,6 +215,20 @@ catalog:
     sap_note: "2206980"
     fix_pattern: "Item/goods-movement data now in MATDOC; read via I_MaterialDocumentItem. Stock calculated on the fly."
     source: sap-s4twl
+
+  # added via retro loop 2026-07-02 (MARD) — was a catalog-miss (not_in_catalog) a human
+  # marked must-fix; adding it lets the deterministic floor flag the MARD stock read.
+  - object: MARD
+    type: table
+    status: RESTRUCTURED                    # stock no longer persisted per-storage-location
+    s4_replacement: MATDOC
+    cds_view: I_MaterialStock
+    world: A
+    release_dependent: false
+    baseline_tier: T3                       # stock computed on-the-fly; read shape depends on intent
+    sap_note: null
+    fix_pattern: "MARD stock fields (LABST etc.) not persisted in S/4; read live stock via MATDOC / I_MaterialStock (CDS). Verify aggregation intent."
+    source: retro:MARD-2026-07
 
   - object: RFBLG
     type: table
