@@ -44,6 +44,32 @@ const WRITE = new Set([
   "DeleteDatabase",
 ]);
 
+// abaplint only builds an OBJECT (and thus parses statements) for files whose name
+// carries an object-type infix, e.g. `zfoo.prog.abap`. A bare `zfoo.abap` yields NO
+// object -> zero statements, SILENTLY. Real abapGit repos are named correctly, but
+// hand-made samples often are not. So give every un-typed .abap a virtual `.prog.abap`
+// name for the registry, while still reporting the real path. See KNOWN_INFIX below.
+const KNOWN_INFIX = new Set([
+  "prog", "clas", "intf", "fugr", "fugs", "type", "enho", "enhs", "ddls", "bdef",
+  "tabl", "view", "dtel", "doma", "shlp", "ttyp", "msag", "tran", "xslt", "prag",
+]);
+function registryName(realPath) {
+  const base = path.basename(realPath).toLowerCase();
+  const m = base.match(/\.([a-z0-9]+)\.abap$/);
+  if (m && KNOWN_INFIX.has(m[1])) return realPath; // already a typed object file
+  return realPath.replace(/\.abap$/i, ".prog.abap"); // treat bare .abap as a program
+}
+
+// filenames abaplint actually turned into an object (so we can warn on the rest).
+function recognizedFilenames(reg) {
+  const s = new Set();
+  for (const obj of reg.getObjects()) {
+    if (!obj.getABAPFiles) continue;
+    for (const f of obj.getABAPFiles()) s.add(f.getFilename());
+  }
+  return s;
+}
+
 function listAbapFiles(target) {
   const out = [];
   const st = fs.statSync(target);
@@ -119,17 +145,33 @@ function main() {
   files.sort();
 
   const reg = new Registry();
-  const relById = [];
+  const virtToReal = new Map();
   for (const f of files) {
     const code = fs.readFileSync(f, "utf8");
-    reg.addFile(new MemoryFile(f, code));
-    relById.push(f);
+    const virt = registryName(f);
+    virtToReal.set(virt, f);
+    reg.addFile(new MemoryFile(virt, code));
   }
   reg.parse();
 
+  const recognized = recognizedFilenames(reg);
+  const warnings = [];
   const statements = [];
-  for (const f of files) {
-    statements.push(...analyzeFileByName(reg, f));
+  for (const [virt, real] of virtToReal) {
+    if (!recognized.has(virt)) {
+      // No object built even after the .prog.abap fallback -> not parseable ABAP.
+      // Warn LOUDLY instead of silently contributing zero statements.
+      const w = `no ABAP object parsed for ${real} — not valid ABAP or unsupported object type; skipped`;
+      warnings.push(w);
+      process.stderr.write("WARN: " + w + "\n");
+      continue;
+    }
+    statements.push(...analyzeFileByName(reg, virt, real));
+  }
+  if (statements.length === 0 && files.length > 0) {
+    process.stderr.write(
+      "WARN: scanned " + files.length + " file(s) but found 0 statements — check the files are valid ABAP.\n"
+    );
   }
 
   process.stdout.write(
@@ -137,6 +179,7 @@ function main() {
       {
         abaplint_version: core.Version ? core.Version.version : "unknown",
         scanned_files: files,
+        warnings,
         statements,
       },
       null,
@@ -145,13 +188,13 @@ function main() {
   );
 }
 
-// resolve the ABAPFile for an exact filename, then analyze.
-function analyzeFileByName(reg, filename) {
+// resolve the ABAPFile for a virtual filename, then analyze — reporting the REAL path.
+function analyzeFileByName(reg, virt, real) {
   for (const obj of reg.getObjects()) {
     if (!obj.getABAPFiles) continue;
     for (const f of obj.getABAPFiles()) {
-      if (f.getFilename() === filename) {
-        return analyzeAbapFile(f, filename);
+      if (f.getFilename() === virt) {
+        return analyzeAbapFile(f, real);
       }
     }
   }

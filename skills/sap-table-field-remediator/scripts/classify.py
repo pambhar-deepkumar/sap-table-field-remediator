@@ -29,6 +29,12 @@ import re
 import sys
 
 import catalog as catalog_mod
+import crv as crv_mod
+
+# CRV successor dictionary (released-target lookup). OPTIONAL — {} if the file is absent,
+# in which case every enrichment below silently no-ops (catalog-only behaviour). Set once
+# by classify(); a target dictionary ONLY (never a world/tier source — see crv.py).
+CRV: dict = {}
 
 WRITE_ACCESS = {"write", "native_write"}
 # statuses whose objects still read fine -> never a must-fix on a plain read
@@ -236,9 +242,23 @@ def preferred_replacement(entry: dict, tier: str | None) -> str | None:
 def finding(file, line, obj, entry, tier, action, category, escalated,
             access="read", must_escalate=False):
     replacement = preferred_replacement(entry, tier)
+    # CRV enrichment (optional, advisory): the hand-catalog target WINS; CRV only fills a
+    # gap and adds an authoritative citation / flags a divergence. Target dict only.
+    crv_hit = CRV.get(obj.upper()) if obj else None
+    crv_note = ""
+    if crv_hit and crv_hit.get("preferred"):
+        crv_tgt = crv_hit["preferred"]
+        crv_ty = crv_hit.get("preferred_type")
+        if replacement is None:
+            replacement = crv_tgt
+            crv_note = f" [target from CRV: {crv_tgt} ({crv_ty}); SAP cloudification repo]"
+        elif crv_tgt.upper() != str(replacement).upper():
+            crv_note = f" [CRV lists released successor {crv_tgt} ({crv_ty}); confirm vs {replacement}]"
+        else:
+            crv_note = f" [confirmed by CRV: {crv_tgt}]"
     rationale = (
         f"{obj}: status {entry.get('status')} (world {entry.get('world')}). "
-        f"{(entry.get('fix_pattern') or '').strip()}"
+        f"{(entry.get('fix_pattern') or '').strip()}{crv_note}"
     )
     iq = None
     if action == "escalate" or tier == "T3":
@@ -267,7 +287,9 @@ def finding(file, line, obj, entry, tier, action, category, escalated,
     }
 
 
-def classify(detect: dict, cat: dict) -> dict:
+def classify(detect: dict, cat: dict, crv: dict | None = None) -> dict:
+    global CRV
+    CRV = crv if crv is not None else crv_mod.load()  # {} if no crv-successors.json
     findings = []
     escalations = []
     suppressed = []
@@ -379,9 +401,15 @@ def classify(detect: dict, cat: dict) -> dict:
             # Unknown != safe. The catalog is a PARTIAL shortlist, so a miss means
             # "we don't know", not "not affected". Route to the review queue (KB-search
             # + expert decide) instead of dropping it. See DECISIONS.md [2026-06-27].
+            # CRV enrichment: attach an authoritative released successor as a starting
+            # target for the reviewer/LLM (advisory; None if CRV doesn't know it).
+            crv_hit = CRV.get(obj)
             review_queue.append({"file": file, "line": line, "object": obj,
                                  "object_type": "table",  # unknown object; table-level by default
-                                 "access": access, "reason": "not_in_catalog"})
+                                 "access": access, "reason": "not_in_catalog",
+                                 "crv_successor": crv_hit.get("preferred") if crv_hit else None,
+                                 "crv_successor_type": crv_hit.get("preferred_type") if crv_hit else None,
+                                 "crv_state": crv_hit.get("state") if crv_hit else None})
             continue
         status = entry.get("status")
         world = entry.get("world")
