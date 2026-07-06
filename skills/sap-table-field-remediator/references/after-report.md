@@ -21,8 +21,9 @@ file:line, one-line fix) and take a single batch decision rather than one prompt
 ```
 python3 scripts/worklist.py record --ref "<finding_ref>" --status approved
 ```
-"Approve" authorizes the mechanical fix; it does **not** edit ABAP — apply-mode is a no-op today
-(roadmap). If the human rejects one, record it `rejected` with a `--comment` saying why.
+"Approve" authorizes the mechanical fix. The actual local-file edit is written later by `apply.py`
+in the Apply step (below), which respects any `rejected` decision. If the human rejects one, record it
+`rejected` with a `--comment` saying why.
 
 ## T2 `propose` — before → after
 For each, show the source line as **before** and the finding's `replacement` as **after**, with
@@ -62,12 +63,27 @@ SKILL §2.1's decide-or-skip, now recorded: the human returns a verdict **plus a
 - Promote to a fix → `--status approved --comment "<recommended fix / KB pages>"`.
 - Skip → `--status rejected --comment "<why safe to skip>"`.
 
+## Apply the approved fixes (writes local source)
+Once decisions are recorded, write the mechanical fixes to the local `.abap` files:
+- **T1 `auto_apply`** → run `apply.py`. It swaps each object token whole-word (e.g. `KONV` ->
+  `PRCD_ELEMENTS`), emits a reversible unified diff + `apply-log.json`, honors ledger `rejected`/
+  `deferred` decisions, and never touches T2/T3. Preview with `--dry-run` first.
+  ```
+  python3 scripts/apply.py --report ./remediation-report.json --src . --ledger ./remediation-ledger.json --dry-run
+  python3 scripts/apply.py --report ./remediation-report.json --src . --ledger ./remediation-ledger.json
+  ```
+- **Approved T2/T3** → Claude writes these via its editor (variant-dependent; not mechanical).
+- **Verify** no must-fix reference survives: `python3 scripts/residual_check.py --src ./src`.
+
+**Boundary:** all of this edits LOCAL files only. Pushing/activating the change in the SAP system is
+the client's step — the tool has no system access. "Unsafe auto-applies = 0" still holds (guard.py).
+
 ## Close out
 1. **Sign-off** (gates the after-action report):
    ```
    python3 scripts/worklist.py signoff --by "<name>"
    ```
-2. **After-action report** (human-readable md + html):
+2. **After-action report** (human-readable md + html; auto-detects `apply-log.json` next to the report):
    ```
    python3 scripts/after_action.py --report ./remediation-report.json --ledger ./remediation-ledger.json
    ```

@@ -68,6 +68,31 @@ def finding_ref(file: str, object_: str, line) -> str:
     return f"{file}::{object_}::{line}"
 
 
+def load_apply_log(path: str | None) -> dict | None:
+    """Load an apply-log.json (written by apply.py) if present. Returns None when the
+    file is absent/unreadable so callers can fall back to the analysis-only wording."""
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def apply_summary(apply_log: dict | None) -> dict:
+    """Normalize the apply-log into the fields the renderers need."""
+    if not apply_log:
+        return {"applied_count": 0, "files": 0, "refs": []}
+    applied = apply_log.get("applied", [])
+    files = {a.get("file") for a in applied if a.get("file")}
+    return {
+        "applied_count": apply_log.get("applied_count", len(applied)),
+        "files": len(files),
+        "refs": [a.get("finding_ref", "") for a in applied],
+    }
+
+
 def basename_line(file: str, line) -> str:
     return f"{os.path.basename(file)}:{line}"
 
@@ -267,8 +292,19 @@ def render_markdown(s: dict, drift: dict) -> str:
     # 6. Roadmap note
     L.append("## 6. Roadmap note")
     L.append("")
-    L.append("- **No ABAP was edited.** This run is analysis-only; in-system apply is on the roadmap "
-             "(apply-mode roadmap).")
+    ap = s.get("apply", {"applied_count": 0, "files": 0, "refs": []})
+    if ap["applied_count"] > 0:
+        L.append(f"- **{ap['applied_count']} fix(es) applied to {ap['files']} file(s)** as local diffs "
+                 "(see `apply-log.json`). Not yet pushed/activated in the SAP system — that hand-off is "
+                 "the client's step (no system access).")
+        refs = ", ".join(f"`{r}`" for r in ap["refs"][:10])
+        if len(ap["refs"]) > 10:
+            refs += f", … (+{len(ap['refs']) - 10} more)"
+        if refs:
+            L.append(f"  - Applied: {refs}")
+    else:
+        L.append("- **No fixes were written to source in this run (analysis-only).** Local-file apply is "
+                 "available via `apply.py`; pushing into the SAP system remains the client's step.")
     L.append("- **Review surface = this session.** In-system review via ADT / a web review surface is "
              "roadmap, not yet wired.")
     L.append("- Unsafe auto-applies remain **0** by construction (structural guard), inherited from the "
@@ -480,8 +516,19 @@ def render_html(s: dict, drift: dict) -> str:
     # 6. roadmap note
     P.append("<h2>6. Roadmap note</h2>")
     P.append("<ul class='roadmap'>")
-    P.append("<li><strong>No ABAP was edited.</strong> This run is analysis-only; in-system apply "
-             "is on the roadmap (apply-mode roadmap).</li>")
+    ap = s.get("apply", {"applied_count": 0, "files": 0, "refs": []})
+    if ap["applied_count"] > 0:
+        refs = ", ".join(f"<code>{esc(r)}</code>" for r in ap["refs"][:10])
+        if len(ap["refs"]) > 10:
+            refs += f", … (+{len(ap['refs']) - 10} more)"
+        P.append(f"<li><strong>{ap['applied_count']} fix(es) applied to {ap['files']} file(s)</strong> "
+                 "as local diffs (see <code>apply-log.json</code>). Not yet pushed/activated in the SAP "
+                 "system — that hand-off is the client's step (no system access)."
+                 + (f"<br>Applied: {refs}" if refs else "") + "</li>")
+    else:
+        P.append("<li><strong>No fixes were written to source in this run (analysis-only).</strong> "
+                 "Local-file apply is available via <code>apply.py</code>; pushing into the SAP system "
+                 "remains the client's step.</li>")
     P.append("<li><strong>Review surface = this session.</strong> In-system review via ADT / a web "
              "review surface is roadmap, not yet wired.</li>")
     P.append("<li>Unsafe auto-applies remain <span class='ok-note'>0</span> by construction "
@@ -504,6 +551,8 @@ def main() -> int:
     ap.add_argument("--ledger", required=True, help="path to remediation-ledger.json")
     ap.add_argument("--out-dir", default=None,
                     help="output directory (default: directory of the report)")
+    ap.add_argument("--apply-log", default=None,
+                    help="path to apply-log.json from apply.py (default: alongside the report)")
     args = ap.parse_args()
 
     try:
@@ -528,6 +577,12 @@ def main() -> int:
         )
 
     s = aggregate(report, ledger, args.report, args.ledger)
+
+    # Reflect what apply.py actually did (if it ran). Default: apply-log.json next to
+    # the report; --apply-log overrides. Absent -> analysis-only wording.
+    apply_log_path = args.apply_log or os.path.join(
+        os.path.dirname(os.path.abspath(args.report)), "apply-log.json")
+    s["apply"] = apply_summary(load_apply_log(apply_log_path))
 
     md_path = os.path.join(out_dir, "after-action-report.md")
     html_path = os.path.join(out_dir, "after-action-report.html")
