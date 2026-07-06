@@ -31,6 +31,26 @@ catalog `simplification-list.yaml`.
 - See `references/taxonomy.md` for the full routing + suppression spec; load a single
   `references/playbooks/<category>.md` only AFTER a finding is classified.
 
+### Custom overrides (optional client overlay)
+A per-client `custom-overrides.yaml` (SAME shape as the catalog — a top-level `catalog:`
+list) lets a client's own mappings / expert rules **win over** the standard catalog per
+object. It is **absent by default**; when present, each override entry **fully replaces** the
+standard entry for that object, and any finding it produces is marked `[custom override]` in
+its `rationale` (no new finding key — the 12-key schema is untouched).
+- **Activate:** copy `references/custom-overrides.example.yaml` to `custom-overrides.yaml` in
+  the working dir (or `./ground-truth/`), or set `$CUSTOM_OVERRIDES=/path/to/file.yaml`.
+  Resolution: `$CUSTOM_OVERRIDES` → `./ground-truth/` → `./` → bundled `../references/`.
+- **The guard still holds.** An override customizes *knowledge* only. `guard.py` derives
+  auto_apply from **structural** facts (write? escalated? non-T1?), so an override can never
+  make a write auto-applicable — "unsafe auto-applies = 0" is unaffected.
+- **Inspect:** `python3 scripts/catalog.py --show-overrides` lists overridden objects
+  (standard→custom target). A malformed override file is ignored with a stderr warning.
+- **Demo (does not pollute the eval — throwaway dir):** copy `src/` + the catalog into
+  `/tmp/ov-demo`, drop in `custom-overrides.yaml`, run `analyze.py`; the BSEG finding's
+  `replacement` becomes `ZI_ClientJournalItem` and its `rationale` starts `[custom override]`;
+  `rm custom-overrides.yaml` to restore. Full recipe in the example file's header. **Never**
+  commit an active `custom-overrides.yaml` into `ground-truth/` (it would shift the scored eval).
+
 ## Procedure
 
 ### 0. Setup (once)
@@ -142,10 +162,14 @@ it (`finding_ref = file::object::line`; statuses `approved|rejected|answered|ack
 python3 scripts/worklist.py record --ref "<finding_ref>" --status <...> [--answer "..."] [--comment "..."]
 ```
 - **T1 `auto_apply`** → present all T1s together, batch `--status approved`. "Approve" authorizes the
-  mechanical fix; the ABAP edit itself is roadmap (apply-mode is a no-op today).
+  mechanical fix; write it to the local source with `python3 scripts/apply.py --report ./remediation-report.json
+  --src . --ledger ./remediation-ledger.json` (whole-word token swap, e.g. `KONV`->`PRCD_ELEMENTS`, as a
+  reversible diff + `apply-log.json`; it honors ledger rejections and never touches T2/T3). Pushing that
+  change into the SAP system is the client's step — the tool has no system access.
 - **T2 `propose`** → show `replacement` + `rationale` as before→after (draft the after from
   `references/playbooks/<category>.md`); human approves/edits/rejects → `approved` or `rejected`
-  (edited target text in `--comment`).
+  (edited target text in `--comment`). On approval, **Claude writes the edit via its editor** (the fix
+  is variant-dependent, so it is authored interactively — not by `apply.py`).
 - **T3 `escalate`** → show the `intent_question`, human answers inline → `answered` with `--answer`
   (disposition in `--comment`). This is the headline human sign-off moment.
 - **`verify`** → `acknowledged` (optional owner in `--comment`).
@@ -170,8 +194,11 @@ python3 scripts/after_action.py --report ./remediation-report.json --ledger ./re
 python3 scripts/retro.py --ledger ./remediation-ledger.json --review-queue ./review-queue.json
 ```
 
-**What is NOT done here:** no ABAP is edited (apply-mode is roadmap); the review surface is this
-session, not ADT or a web UI (roadmap); the retro is a single worked example, not a general engine.
+**What IS and is NOT done here:** T1 `auto_apply` fixes are written to **local** ABAP files by
+`apply.py` (diffs + `apply-log.json`); approved T2/T3 fixes are written by Claude via its editor.
+**Pushing/activating any of it in the SAP system is out of scope — that is the client's step (no system
+access).** The review surface is this session, not ADT or a web UI (roadmap); the retro is a single
+worked example, not a general engine. "Unsafe auto-applies = 0" still holds by construction (guard.py).
 
 ## Headless run contract (`claude -p`, no human present)
 - **The worklist and sign-off are interactive-only** (§After the report) — the scored path is
@@ -180,8 +207,10 @@ session, not ADT or a web UI (roadmap); the retro is a single worked example, no
   in the scored run; waiting would hang/time out. The ask-then-proceed loop is a *production*
   workflow, not the scored path. The classification still happens; only the human turn is skipped.
 - Scan `*.abap` ONLY. Ignore paired `*.prog.xml` / `*.clas.xml` (metadata, not code).
-- Two modes: `analysis` (report only — the scored path) and `apply` (also writes T1 patches; then
-  `python3 scripts/residual_check.py --src ./src` gates that no must-fix reference survives).
+- Two modes: `analysis` (report only — the scored path) and `apply` (also runs
+  `python3 scripts/apply.py --report ./remediation-report.json --src .` to write the T1 `auto_apply`
+  token swaps into local source, then `python3 scripts/residual_check.py --src ./src` gates that no
+  must-fix reference survives). Local files only — never a SAP-system push.
 - **Simplification KB (optional enrichment).** To give the escalation step §2 the KB tools,
   pass the server config and allow its tools:
   ```
@@ -199,6 +228,7 @@ session, not ADT or a web UI (roadmap); the retro is a single worked example, no
 | `scripts/classify.py` | catalog lookup → world/category/tier/action + `escalations` list |
 | `scripts/guard.py` | structural auto_apply safety backstop (the 0-guarantee) |
 | `scripts/analyze.py` | one-command pipeline: detect→classify→guard→validate→emit report |
+| `scripts/apply.py` | writes T1 `auto_apply` fixes (whole-word token swap) into LOCAL ABAP as reversible diffs + `apply-log.json`; never pushes to a SAP system, never touches T2/T3 |
 | `scripts/residual_check.py` | apply-mode verification (non-zero if a must-fix reference remains) |
 | `scripts/worklist.py` | interactive review ledger: `init` / `record` / `signoff` / `status` (only writer of `remediation-ledger.json`) |
 | `scripts/after_action.py` | report + ledger → human-readable after-action report (`.md` + `.html`) |

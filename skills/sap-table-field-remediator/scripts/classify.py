@@ -240,6 +240,10 @@ def finding(file, line, obj, entry, tier, action, category, escalated,
         f"{obj}: status {entry.get('status')} (world {entry.get('world')}). "
         f"{(entry.get('fix_pattern') or '').strip()}"
     )
+    # Provenance: a per-client custom-override entry wins over the standard catalog.
+    # Marker goes into the rationale string only — the finding schema is closed (12 keys).
+    if entry.get("origin") == "custom":
+        rationale = "[custom override] " + rationale + " (per client custom override)."
     iq = None
     if action == "escalate" or tier == "T3":
         iq = intent_question_for(obj, category, entry)
@@ -358,14 +362,17 @@ def classify(detect: dict, cat: dict) -> dict:
         # --- EXEC SQL native -> statement-level smell -> sibling handoff -- #
         if kind == "exec_sql":
             entry = cat.get(obj, {"world": None, "type": "table", "status": "?"})
+            exec_rationale = (f"Native EXEC SQL on {obj}: statement-level portability smell; "
+                              f"hand off to the statement-smell sibling skill (Skill-4).")
+            if entry.get("origin") == "custom":
+                exec_rationale = "[custom override] " + exec_rationale + " (per client custom override)."
             f = {
                 "file": file, "line": line, "object": obj,
                 "object_type": OBJ_TYPE_MAP.get(entry.get("type", "table"), "table"),
                 "world": entry.get("world"), "tier": None, "action": "route_to_sibling",
                 "category": None,
                 "replacement": None,
-                "rationale": f"Native EXEC SQL on {obj}: statement-level portability smell; "
-                             f"hand off to the statement-smell sibling skill (Skill-4).",
+                "rationale": exec_rationale,
                 "intent_question": None, "patch": None,
                 "_meta": {"access": access, "baseline_tier": None, "status": entry.get("status"),
                           "escalated": False, "must_escalate": False},
@@ -430,6 +437,10 @@ def classify(detect: dict, cat: dict) -> dict:
                  "category": category, "dynamic_resolved": resolved_dynamic,
                  "note": "Confirm intent_question + replacement; refine rationale."}
             )
+
+    n_custom = sum(1 for f in findings if str(f.get("rationale", "")).startswith("[custom override]"))
+    if n_custom:
+        sys.stderr.write(f"[classify] {n_custom} finding(s) used a custom override\n")
 
     return {"findings": findings, "escalations": escalations,
             "suppressed": suppressed, "review_queue": review_queue}

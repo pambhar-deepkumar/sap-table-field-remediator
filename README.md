@@ -75,6 +75,23 @@ Full walkthrough: **[QUICKSTART.md](QUICKSTART.md)**.
    (page-cited), reached over MCP — evidence, not an oracle.
 4. **Emit** a schema-valid `remediation-report.json`. A human reviews and signs off.
 
+### Custom overrides (client-specific mappings)
+
+The Remediation Catalog ships SAP's standard mappings. To make the tool defer to your own rules for
+specific objects, add a custom overrides file — it wins over the standard catalog per object; anything
+you don't list falls through to the standard catalog.
+
+1. Copy the template: `cp skills/sap-table-field-remediator/references/custom-overrides.example.yaml custom-overrides.yaml`
+   (put it in your working dir, or point `$CUSTOM_OVERRIDES` at it).
+2. Edit it. Each entry has the same shape as a catalog entry (`object`, `status`, `world`,
+   `baseline_tier`, `s4_replacement`/`cds_view`); an entry **fully replaces** the standard entry for that object.
+3. Run the skill as usual (`python3 scripts/analyze.py --src ./src`). Findings that used your override are
+   tagged `[custom override]` in the rationale.
+4. Check what's active any time: `python3 scripts/catalog.py --show-overrides`.
+
+The safety guard still applies — an override changes the *mapping*, it cannot make an unsafe change
+auto-apply (a write is still escalated).
+
 ## Evaluation
 
 Blind-run against a synthetic ground-truth corpus (18 abapGit objects, 31 labeled findings across
