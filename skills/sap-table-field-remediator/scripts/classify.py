@@ -250,12 +250,19 @@ def finding(file, line, obj, entry, tier, action, category, escalated,
         crv_tgt = crv_hit["preferred"]
         crv_ty = crv_hit.get("preferred_type")
         if replacement is None:
+            # FILL — catalog had no target: adopt CRV's released successor (all tiers).
             replacement = crv_tgt
             crv_note = f" [target from CRV: {crv_tgt} ({crv_ty}); SAP cloudification repo]"
-        elif crv_tgt.upper() != str(replacement).upper():
-            crv_note = f" [CRV lists released successor {crv_tgt} ({crv_ty}); confirm vs {replacement}]"
-        else:
+        elif crv_tgt.upper() == str(replacement).upper():
+            # CONFIRM — CRV agrees with the catalog target (all tiers).
             crv_note = f" [confirmed by CRV: {crv_tgt}]"
+        elif tier in ("T2", "T3") and entry.get("status") != "CHANGED":
+            # DIVERGENCE FLAG — only where our target is a genuine forward choice.
+            # Suppressed for T1 and status-CHANGED: there the raw successor table (e.g.
+            # KONV->PRCD_ELEMENTS) is the intended target and CRV's CDS view would emit a
+            # spurious "confirm vs" note on every such case. See DECISIONS.md [2026-07-07].
+            crv_note = f" [CRV lists released successor {crv_tgt} ({crv_ty}); confirm vs {replacement}]"
+        # else (T1 / status-CHANGED divergence): suppress — no CRV note.
     rationale = (
         f"{obj}: status {entry.get('status')} (world {entry.get('world')}). "
         f"{(entry.get('fix_pattern') or '').strip()}{crv_note}"
