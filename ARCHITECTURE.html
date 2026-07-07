@@ -85,6 +85,8 @@ tr:last-child td{border-bottom:none;}
 .p-crv{background:var(--crv-bg);color:var(--crv);}
 .p-new{background:var(--good-bg);color:var(--good);}
 .p-mod{background:var(--t2-bg);color:var(--t2);}
+/* CRV state = a different axis from our tiers → neutral slate, never the tier ramp */
+.p-state{background:var(--bg-tint);color:var(--muted);border:1px solid var(--line);}
 /* pipeline diagram */
 .flow{display:flex;align-items:stretch;gap:.5rem;flex-wrap:wrap;margin:1.2rem 0;}
 .node{flex:1 1 130px;min-width:120px;background:var(--card);border:1px solid var(--line);
@@ -289,17 +291,17 @@ crv_hit = CRV.get(obj)
   still physically exist / work after a brownfield conversion?"</em></p>
   <div class="scroll"><table>
     <tr><th>State</th><th>Meaning</th></tr>
-    <tr><td><span class="pill p-t1">released</span></td>
+    <tr><td><span class="pill p-state">released</span></td>
       <td>SAP published this as an official, stable <strong>public API</strong> — usable in ABAP
       Cloud / clean-core code. Usually a CDS view (e.g. <code>I_JournalEntry</code>).</td></tr>
-    <tr><td><span class="pill p-t3">notToBeReleased</span></td>
+    <tr><td><span class="pill p-state">notToBeReleased</span></td>
       <td>SAP will <strong>not</strong> release it as an API — use its <code>successor</code> in clean
       core. <strong>Not the same as "removed":</strong> most raw tables (<code>BKPF</code>,
       <code>MARA</code>) still exist and a classic <code>SELECT</code> still works after a brownfield
       conversion; SAP just steers new code to the successor.</td></tr>
-    <tr><td><span class="pill p-t2">notToBeReleasedStable</span></td>
+    <tr><td><span class="pill p-state">notToBeReleasedStable</span></td>
       <td>Same as <code>notToBeReleased</code>, but not expected to change soon (stable).</td></tr>
-    <tr><td><span class="pill p-t2">deprecated</span></td>
+    <tr><td><span class="pill p-state">deprecated</span></td>
       <td>On its way out of use.</td></tr>
   </table></div>
   <div class="callout">
