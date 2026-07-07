@@ -84,6 +84,48 @@ uv pip install --python .venv/bin/python docling
 .venv/bin/python build_index.py
 ```
 
+### Rebuild the CRV successor dictionary (Skill-3 target enrichment)
+
+`crv_ingest.py` distils SAP's **Cloudification Repository** (open JSON, Apache-2.0,
+`github.com/SAP/abap-atc-cr-cv-s4hc`) into `skills/sap-table-field-remediator/references/crv-successors.json`
+— an object→released-successor (CDS view) lookup that `classify.py` uses to fill/verify a
+finding's `replacement` and to seed a target on catalog-miss review-queue items.
+
+**Target dictionary ONLY.** CRV `state` is clean-core API readiness, NOT brownfield
+breakage — never derive world/tier from it (see the script header).
+
+#### What the CRV `state` values mean
+
+CRV states are **clean-core / ABAP Cloud API-governance** labels — "are you allowed to use
+this object in released ABAP Cloud code?" — NOT "does the object still physically exist / work
+after a brownfield conversion?"
+
+| State | Meaning |
+|---|---|
+| `released` | SAP has published this object as an official, stable **public API**. You may use it in ABAP Cloud / clean-core code. These are usually CDS views (e.g. `I_JournalEntry`). |
+| `notToBeReleased` | SAP will **not** release this object as an API. Do not use it in clean-core code — use its `successor` instead. **Not the same as "removed":** most raw tables (e.g. `BKPF`, `MARA`) still exist and a classic `SELECT` still works after a brownfield conversion; SAP simply steers new code to the successor. |
+| `notToBeReleasedStable` | Same as `notToBeReleased`, but the object is not expected to change soon (stable). |
+| `deprecated` | On its way out of use. |
+
+**Analogy.** `released` = "this product is on the shelf, warranted — use it."
+`notToBeReleased` = "we no longer sell this; buy the newer model instead" — the old one may
+still work at home, but the store won't recommend it for new work.
+
+**Why this matters for us.** `notToBeReleased` ≠ "breaks in brownfield". `MARA`/`VBAK` are
+`notToBeReleased` yet still read fine on-stack, and the tables that truly break (`VBUK`,
+`RFBLG`, LIS) are **absent** from CRV. So CRV answers *"is this a clean-core API?"* while our
+catalog answers *"does this break in the conversion?"* — two different questions. That is why
+CRV feeds only the **target** (successor), never the world/tier decision.
+
+```bash
+# 1. fetch the PCE release-info file (pick the release you target)
+curl -sSLo objectReleaseInfo_PCELatest.json \
+  https://raw.githubusercontent.com/SAP/abap-atc-cr-cv-s4hc/main/src/objectReleaseInfo_PCELatest.json
+# 2. rebuild the dictionary (add --hand <catalog.yaml> for a coverage report)
+python3 crv_ingest.py --crv objectReleaseInfo_PCELatest.json \
+  --out ../../skills/sap-table-field-remediator/references/crv-successors.json --types TABL
+```
+
 ## Register with Claude Code
 
 **Project scope** (writes/uses `.mcp.json` at the project root — already present):

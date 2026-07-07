@@ -28,6 +28,14 @@ catalog `simplification-list.yaml`.
   (`references/taxonomy.md`). Tier only ratchets up — worst-fault-wins.
 - **Safety is structural.** `scripts/guard.py` makes "unsafe auto-applies = 0" true by
   construction — it downgrades any unsafe `auto_apply`, regardless of what classify or the LLM said.
+- **CRV is a target dictionary, not a world/tier source.** `references/crv-successors.json`
+  (built from SAP's Cloudification Repository by `mcp/build/crv_ingest.py`) maps an object to
+  its released successor (CDS view). `classify.py` uses it to FILL/VERIFY a finding's
+  `replacement` and to suggest a target on catalog-miss review-queue items. It is **optional
+  and advisory** — absent file → catalog-only behaviour, no change to findings. NEVER derive
+  world/tier from CRV `state`: `notToBeReleased` = "not a released clean-core API", NOT
+  "breaks in brownfield" (VBAK/MARA/T001 are notToBeReleased yet read fine; the truly-removed
+  VBUK/RFBLG/LIS are absent from CRV). Brownfield world/tier stays with the hand catalog.
 - See `references/taxonomy.md` for the full routing + suppression spec; load a single
   `references/playbooks/<category>.md` only AFTER a finding is classified.
 
@@ -111,7 +119,9 @@ Edit `remediation-report.json` in place. Add/adjust findings; do not invent keys
 ### 2.1 Work the review queue (catalog-misses — never silently dropped)
 `analyze.py` also writes **`review-queue.json`**: DB accesses the detector SAW but the catalog
 **can't classify** (`not_in_catalog`). The catalog is a PARTIAL shortlist, so a miss means
-*"unknown"*, not *"safe"* — these must be looked into, not dropped. For each item:
+*"unknown"*, not *"safe"* — these must be looked into, not dropped. Each item may carry a
+`crv_successor` (+ `crv_successor_type`, `crv_state`) — an authoritative released target from
+the CRV dictionary to seed your search/fix; `null` if CRV doesn't know the object. For each item:
 
 - **Search the KB, not lookup.** Call `mcp__simplification-kb__search(object)` (e.g.
   `search("MARD")`). Do **NOT** use `lookup` here — `lookup` is keyed to the ~35 catalog objects and
@@ -225,7 +235,8 @@ worked example, not a general engine. "Unsafe auto-applies = 0" still holds by c
 |---|---|
 | `scripts/detect.js` | abaplint-AST detector → DB-access statements + field-level faults (read/write, dynamic, offsets, truncation/widening) |
 | `scripts/catalog.py` | loads the Remediation Catalog `simplification-list.yaml` (auto-discovers it at runtime) |
-| `scripts/classify.py` | catalog lookup → world/category/tier/action + `escalations` list |
+| `scripts/crv.py` | loads the CRV successor dictionary `references/crv-successors.json` (optional; released-target lookup only) |
+| `scripts/classify.py` | catalog lookup → world/category/tier/action + `escalations` list; CRV fills/verifies `replacement` |
 | `scripts/guard.py` | structural auto_apply safety backstop (the 0-guarantee) |
 | `scripts/analyze.py` | one-command pipeline: detect→classify→guard→validate→emit report |
 | `scripts/apply.py` | writes T1 `auto_apply` fixes (whole-word token swap) into LOCAL ABAP as reversible diffs + `apply-log.json`; never pushes to a SAP system, never touches T2/T3 |
