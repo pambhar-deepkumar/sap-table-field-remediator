@@ -105,6 +105,7 @@
   /* ---- planned marker (single consistent convention) ---- */
   .planned { position: relative; }
   .planned-tag { display: inline-flex; align-items: center; font: 700 .6rem var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--card); border: 1px solid var(--line-2); border-radius: 999px; padding: .1rem .45rem; }
+  .built-tag { display: inline-flex; align-items: center; font: 700 .6rem var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--good); background: var(--good-bg); border: 1px solid var(--good-line); border-radius: 999px; padding: .1rem .45rem; }
 
   /* ================= KNOWLEDGE band ================= */
   /* two kinds of source: a ranked mapping lookup (left) + evidence Claude reads (right) */
@@ -141,6 +142,10 @@
   .klookup-cap strong { color: var(--ink); }
 
   .kevidence .kcard.evidence { border-left-color: var(--know); background: var(--card); }
+  /* target verifier: a check on the fix target — teal, distinct from the indigo evidence card, and NOT in the decision precedence */
+  .kevidence .kcard.support { border-left-color: var(--det); }
+  .kevidence .kcard.support .krole { color: var(--det); }
+  .kevidence .kcard + .kcard { margin-top: .55rem; }
   .kevidence .kread { margin-top: .5rem; font-size: .78rem; color: var(--muted); }
   .kevidence .kread strong { color: var(--ink-soft); }
 
@@ -322,7 +327,7 @@
       <div class="band-head">
         <span class="eyebrow" style="color:var(--know)">Knowledge in</span>
         <h3>What each fix draws on</h3>
-        <span class="hint">two kinds of source: a ranked mapping lookup, plus evidence Claude reads</span>
+        <span class="hint">the catalog decides via a 2-step lookup; supporting sources check the target and inform the fix</span>
         <span class="loop-anchor">↩ the loop closes here</span>
       </div>
       <div class="know-split">
@@ -345,37 +350,33 @@
 
             <div class="kcard rank-2">
               <div class="kh"><div class="ktitle"><span class="rank">2</span><h4>Remediation Catalog</h4></div></div>
-              <span class="krole">Deloitte-curated · the base</span>
-              <p>Curated known fixes, keyed by object. The base used today.</p>
-            </div>
-
-            <div class="kstep">
-              <span class="kelse" aria-hidden="true"><span class="kelse-arr">→</span><span class="kelse-t">else</span></span>
-              <div class="kcard rank-3 is-planned planned">
-                <div class="kh"><div class="ktitle"><span class="rank">3</span><h4>Cloudification Repo</h4></div><span class="planned-tag">Planned</span></div>
-                <span class="krole">planned · SAP raw · broad fallback</span>
-                <p>SAP's authoritative object→successor data. Raw (no tier or guidance), so a hit falls to review — retro can promote it into the catalog.</p>
-              </div>
+              <span class="krole">Deloitte-curated · the base · sets world &amp; tier</span>
+              <p>Curated known fixes, keyed by object. The authoritative base — it sets the decision.</p>
             </div>
           </div>
 
-          <div class="klookup-cap"><strong>First match wins</strong> — overrides beat the curated catalog, which beats SAP's raw data.</div>
+          <div class="klookup-cap"><strong>First match wins</strong> — your overrides beat the standard catalog.</div>
         </div>
 
         <div class="kdiv" aria-hidden="true"></div>
 
-        <!-- evidence: not a competing mapping — the narrative Claude reads -->
+        <!-- supporting sources: NOT in the decision precedence — one verifies the target, one is read for the fix -->
         <div class="kgroup kevidence">
           <div class="kgroup-head">
-            <span class="kgroup-label">Evidence</span>
-            <span class="kgroup-note">not a mapping</span>
+            <span class="kgroup-label">Supporting sources</span>
+            <span class="kgroup-note">not the decision — they don't set world or tier</span>
+          </div>
+          <div class="kcard support">
+            <div class="kh"><div class="ktitle"><h4>Cloudification Repo</h4></div><span class="built-tag">Built</span></div>
+            <span class="krole">verifies / fills the fix target · hints on catalog misses</span>
+            <p>SAP's official object→successor map. Confirms or flags the catalog's target, fills a gap, and suggests a target on a catalog miss. Tables only (262); never sets tier.</p>
           </div>
           <div class="kcard evidence">
             <div class="kh"><div class="ktitle"><h4>Simplification-List KB</h4></div></div>
             <span class="krole">evidence Claude reads</span>
             <p>SAP's change list, made searchable. Claude reads the narrative to derive the variant-correct fix per statement.</p>
           </div>
-          <p class="kread">Doesn't compete for <strong>the mapping</strong> — it's what Claude reads to get the fix right.</p>
+          <p class="kread">Neither competes for <strong>the mapping</strong> — the catalog decides; these check the target and inform the fix.</p>
         </div>
 
       </div>
