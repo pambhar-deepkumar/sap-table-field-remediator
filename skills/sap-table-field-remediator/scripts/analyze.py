@@ -33,7 +33,7 @@ import catalog as catalog_mod
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCHEMA_VERSION = "1.0"
-SKILL_VERSION = "1.1.0"
+SKILL_VERSION = "1.2.0"
 
 FINDING_KEYS = {
     "file", "line", "object", "object_type", "world", "tier", "action",

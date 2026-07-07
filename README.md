@@ -92,6 +92,18 @@ you don't list falls through to the standard catalog.
 The safety guard still applies — an override changes the *mapping*, it cannot make an unsafe change
 auto-apply (a write is still escalated).
 
+### Cloudification Repo target enrichment (CRV)
+
+The **Cloudification Repo** (SAP's official object→successor map, internally *CRV*) is a **target
+verifier**, not a decision source. It confirms or flags the catalog's fix *target*, fills a gap when
+the catalog leaves the target open, and suggests a target on a catalog miss. Tables only (**262**
+objects). It **never** sets the world or tier — the Remediation Catalog stays authoritative; CRV only
+touches the `replacement`. Built and enabled by default (`references/crv-successors.json`).
+
+**This release (v0.3.0)** adds three things on top of detection + tiering: local **apply** of T1 fixes
+(`apply.py`), **custom overrides** (client mappings win), and **Cloudification Repo (CRV)** target
+enrichment.
+
 ## Evaluation
 
 Blind-run against a synthetic ground-truth corpus (18 abapGit objects, 31 labeled findings across
