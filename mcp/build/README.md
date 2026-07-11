@@ -34,7 +34,7 @@ sap-simplification-kb/
 ├── common/
 │   ├── items/*.md        # 429 per-item chunks (frontmatter: item_id,title,pages,sap_notes,…)
 │   ├── index.json        # note-join index (object→items, note→items, scan, catalog)
-│   └── simplification-list.yaml   # the public catalog (the join-key source)
+│   └── kb-index-catalog.yaml   # the public catalog (the join-key source)
 ├── build/                # how the chunk store is reproduced from the PDF (run rarely)
 │   ├── convert_full.py   # docling: PDF → DoclingDocument JSON (accurate tables, no-OCR)
 │   └── chunk.py          # JSON → per-item .md chunks
