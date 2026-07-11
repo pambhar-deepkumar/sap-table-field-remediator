@@ -10,7 +10,7 @@ SAP Note number: the catalog gives each object a `sap_note`; each chunk carries 
 Inputs (the durable, rebuildable-from-PDF assets):
   common/items/*.md           per-item chunks with YAML frontmatter
                               (item_id, title, pages, sap_notes, components, objects)
-  common/simplification-list.yaml   the public catalog (object -> sap_note + metadata)
+  common/kb-index-catalog.yaml   the public catalog (object -> sap_note + metadata)
 
 Output:
   common/index.json with:
@@ -25,7 +25,7 @@ Output:
     catalog          object -> catalog metadata (type, status, sap_note, note_verified,
                      s4_replacement, world, baseline_tier).
 
-Run:  python build_index.py            # uses ./common/items + ./common/simplification-list.yaml
+Run:  python build_index.py            # uses ./common/items + ./common/kb-index-catalog.yaml
       python build_index.py --items DIR --catalog FILE --out FILE
 """
 import json
@@ -39,7 +39,7 @@ import yaml
 HERE = os.path.dirname(os.path.abspath(__file__))
 COMMON = os.path.normpath(os.path.join(HERE, "..", "common"))
 DEFAULT_ITEMS = os.path.join(COMMON, "items")
-DEFAULT_CATALOG = os.path.join(COMMON, "simplification-list.yaml")
+DEFAULT_CATALOG = os.path.join(COMMON, "kb-index-catalog.yaml")
 DEFAULT_OUT = os.path.join(COMMON, "index.json")
 
 # a `sap_note:` line whose trailing comment flags the note as not corroborated
@@ -131,7 +131,7 @@ def build(items_dir, catalog_path, out_path):
 
     index = {
         "meta": {
-            "built_from": "common/items/*.md + common/simplification-list.yaml",
+            "built_from": "common/items/*.md + common/kb-index-catalog.yaml",
             "method": "sap-note-join (primary) + object-name-scan (secondary, labeled)",
             "chunk_count": len(items),
             "catalog_object_count": len(catalog),

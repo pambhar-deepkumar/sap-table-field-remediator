@@ -1,9 +1,9 @@
 {
   "meta": {
-    "built_from": "common/items/*.md + common/simplification-list.yaml",
+    "built_from": "common/items/*.md + common/kb-index-catalog.yaml",
     "method": "sap-note-join (primary) + object-name-scan (secondary, labeled)",
     "chunk_count": 429,
-    "catalog_object_count": 35
+    "catalog_object_count": 39
   },
   "items": {
     "SI-10.1": {
@@ -9601,10 +9601,34 @@
       ],
       "weak_matches": []
     },
+    "FKSTK": {
+      "note_used": "2267306",
+      "note_verified": true,
+      "items": [
+        "SI-2.35",
+        "SI-39.8",
+        "SI-39.9"
+      ],
+      "weak_matches": []
+    },
+    "FKSTA": {
+      "note_used": "2267306",
+      "note_verified": true,
+      "items": [
+        "SI-2.35",
+        "SI-39.8",
+        "SI-39.9"
+      ],
+      "weak_matches": []
+    },
     "VBTYP": {
-      "note_used": null,
-      "note_verified": false,
-      "items": [],
+      "note_used": "2267306",
+      "note_verified": true,
+      "items": [
+        "SI-2.35",
+        "SI-39.8",
+        "SI-39.9"
+      ],
       "weak_matches": [
         "SI-39.8",
         "SI-60.9"
@@ -9637,6 +9661,26 @@
       "weak_matches": [
         "SI-3.13"
       ]
+    },
+    "KNKK": {
+      "note_used": "2270544",
+      "note_verified": true,
+      "items": [
+        "SI-18.1",
+        "SI-39.8",
+        "SI-39.9"
+      ],
+      "weak_matches": []
+    },
+    "KNKA": {
+      "note_used": "2270544",
+      "note_verified": true,
+      "items": [
+        "SI-18.1",
+        "SI-39.8",
+        "SI-39.9"
+      ],
+      "weak_matches": []
     },
     "BSEG": {
       "note_used": "2270333",
@@ -9999,12 +10043,30 @@
       "world": "A",
       "baseline_tier": "T2"
     },
+    "FKSTK": {
+      "type": "field",
+      "status": "RENAMED",
+      "sap_note": "2267306",
+      "note_verified": true,
+      "s4_replacement": "VBAK-FKSTK",
+      "world": "A",
+      "baseline_tier": "T2"
+    },
+    "FKSTA": {
+      "type": "field",
+      "status": "RENAMED",
+      "sap_note": "2267306",
+      "note_verified": true,
+      "s4_replacement": "VBAP-FKSTA",
+      "world": "A",
+      "baseline_tier": "T2"
+    },
     "VBTYP": {
       "type": "field",
       "status": "CHANGED",
-      "sap_note": null,
-      "note_verified": false,
-      "s4_replacement": "VBTYPL",
+      "sap_note": "2267306",
+      "note_verified": true,
+      "s4_replacement": "VBTYP",
       "world": "A",
       "baseline_tier": "T2"
     },
@@ -10025,6 +10087,24 @@
       "s4_replacement": "BUT000",
       "world": "A-verify",
       "baseline_tier": "T2"
+    },
+    "KNKK": {
+      "type": "table",
+      "status": "ABOLISHED",
+      "sap_note": "2270544",
+      "note_verified": true,
+      "s4_replacement": "UKMBP_CMS_SGM",
+      "world": "A",
+      "baseline_tier": "T3"
+    },
+    "KNKA": {
+      "type": "table",
+      "status": "ABOLISHED",
+      "sap_note": "2270544",
+      "note_verified": true,
+      "s4_replacement": "UKMBP_CMS",
+      "world": "A",
+      "baseline_tier": "T3"
     },
     "BSEG": {
       "type": "table",

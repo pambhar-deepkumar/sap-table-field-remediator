@@ -1,4 +1,11 @@
-# Simplification List — PUBLIC catalog (the remediator skill MAY see this)
+# Remediation Catalog — the skill's RUNTIME classification catalog (the remediator skill MAY see this).
+#
+# ROLE: this is the file catalog.py loads at runtime to classify findings. It is discovered by the
+# literal name `simplification-list.yaml` ($CATALOG -> ./ground-truth/ -> ./ -> this bundled copy), so
+# the FILENAME is a discovery contract with the eval harness / a user's working dir — do not rename it.
+# Conceptually it is the "Remediation Catalog" (see README "Three names, kept distinct"), NOT the raw SAP
+# Simplification List. The MCP knowledge-base build keeps its OWN separate copy at
+# mcp/common/kb-index-catalog.yaml (join-keys only); the two are independent — edits here do not propagate.
 #
 # Phase 1 deliverable. This is the curated, corrected catalog the skill is allowed to read
 # (the production analogue of the SAP Simplification DB + the Deloitte KB). It was originally
@@ -108,17 +115,41 @@ catalog:
     fix_pattern: "Overall item status now read from VBAP (or LIPS by category), not VBUP."
     source: deloitte-kb
 
+  - object: FKSTK
+    type: field
+    status: RENAMED                        # relocated, same name (former VBUK-FKSTK)
+    s4_replacement: VBAK-FKSTK             # header billing status; LIKP-FKSTK (deliveries) / VBRK (billing) by doc category
+    cds_view: I_SalesOrder
+    world: A
+    release_dependent: false
+    baseline_tier: T2
+    sap_note: "2267306"
+    fix_pattern: "Overall billing status now read from the header table by doc category, not VBUK: VBAK (sales), LIKP (deliveries), VBRK (billing). Target depends on which document the code reads."
+    source: deloitte-kb
+
+  - object: FKSTA
+    type: field
+    status: RENAMED                        # relocated, same name (former VBUP-FKSTA)
+    s4_replacement: VBAP-FKSTA             # item billing status; LIPS-FKSTA (deliveries) by doc category
+    cds_view: I_SalesOrderItem
+    world: A
+    release_dependent: false
+    baseline_tier: T2
+    sap_note: "2267306"
+    fix_pattern: "Item billing status now read from the item table by doc category, not VBUP: VBAP (sales), LIPS (deliveries). Target depends on which document the code reads."
+    source: deloitte-kb
+
   - object: VBTYP
     type: field
-    status: CHANGED                        # length change CHAR1 -> CHAR4
-    s4_replacement: VBTYPL                  # VBAK-VBTYPL (CHAR4)
+    status: CHANGED                        # data element widened CHAR1 -> CHAR4 (field/column name unchanged)
+    s4_replacement: VBTYP                  # SAME field VBAK-VBTYP; its data element changed VBTYP(CHAR1) -> VBTYPL(CHAR4). There is NO field VBAK-VBTYPL.
     cds_view: I_SalesOrder
     world: A
     release_dependent: true
-    baseline_tier: T2                       # value-domain widening; comparisons/IFs must be revisited
-    sap_note: null
-    fix_pattern: "SD doc category widened CHAR1 VBTYP -> CHAR4 VBTYPL; fix literal comparisons. Verify on target release."
-    source: deloitte-kb
+    baseline_tier: T2                       # value-domain widening; comparisons/IFs/constants must be revisited
+    sap_note: "2267306"                     # S4TWL - SD Simplified Data Models (data element VBTYP -> VBTYPL)
+    fix_pattern: "Field stays VBAK-VBTYP; its data element widened CHAR1(VBTYP) -> CHAR4(VBTYPL). Do NOT rename the field/column. Widen local vars + constants, fix CHAR1 literal comparisons, use IF_SD_DOC_CATEGORY constants. VBTYP_EXT(CHAR4) removed."
+    source: "corrected:vbtypl-is-a-data-element-not-a-field"
 
   - object: KNA1
     type: table
@@ -142,6 +173,30 @@ catalog:
     baseline_tier: T2
     sap_note: "2265093"
     fix_pattern: "Read may still work via CVI. Modernize to BUT000/I_Supplier."
+    source: sap-s4twl
+
+  - object: KNKK
+    type: table
+    status: ABOLISHED                       # classic credit mgmt removed; replaced by SAP Credit Management (FSCM/UKM)
+    s4_replacement: UKMBP_CMS_SGM           # FSCM credit segment data; master credit fields move to BP + UKM (no 1:1 table)
+    cds_view: null
+    world: A
+    release_dependent: true                 # bites when FSCM Credit Management is active on target
+    baseline_tier: T3                       # not a rename; fields spread across BP/UKM structures -> redesign
+    sap_note: "2270544"                     # S4TWL - Credit Management (field-level replacement detail: KBA 2706489)
+    fix_pattern: "Classic credit tables (KNKK/KNKA) obsolete under FSCM Credit Management. No 1:1 table swap; credit master fields relocate to BP + UKM (UKMBP_CMS*, BUT000). Redesign the read against the FSCM model / released API. Escalate."
+    source: sap-s4twl
+
+  - object: KNKA
+    type: table
+    status: ABOLISHED
+    s4_replacement: UKMBP_CMS               # FSCM central credit data; see KNKK
+    cds_view: null
+    world: A
+    release_dependent: true
+    baseline_tier: T3
+    sap_note: "2270544"
+    fix_pattern: "Central credit master (KNKA) obsolete under FSCM Credit Management; fields relocate to BP + UKM. No 1:1 table. Redesign / escalate (see KNKK)."
     source: sap-s4twl
 
   - object: BSEG
